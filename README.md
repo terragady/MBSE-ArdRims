@@ -37,7 +37,7 @@ Differences between other systems and MBSE-ArdRims:
     normal Mash heater.
 10. Improved and more robust 1-wire bus reads for the sensor(s).
 11. No timer control in manual mode. Use the wall clock.
-12. Automatic mode s now state controlled. This saves memory and the code is
+12. Automatic mode is now state controlled. This saves memory and the code is
     better readable.
 13. EEPROM storage has a signature and revision marks, so upgrades to any new
     versions should be smooth. This also means that old recipe storage from
