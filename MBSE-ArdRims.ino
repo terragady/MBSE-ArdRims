@@ -18,6 +18,8 @@
 #define DebugProcess    true
 #define DebugButton     false
 #define DebugReadWrite  false
+#define DebugErrors     true
+
 
 // Default language is English, others must be set.
 #define langNL          true
@@ -31,7 +33,7 @@
 
 // hardware setup, adjust for your own board.
 #if USE_DS18020 == true
-const byte SensorPin =   7;
+const byte SensorMLTPin =   7;
 #if USE_HLT == true
 const byte SensorHLTPin = 11;
 #endif
@@ -50,7 +52,7 @@ const byte SensorHLTPin = 11;
 
 
 #if USE_DS18020 == true
-OneWire ds(SensorPin);
+OneWire dsm(SensorMLTPin);
 #if USE_HLT == true
 OneWire dsh(SensorHLTPin);
 #endif
@@ -129,10 +131,10 @@ double  Output;
 double  Setpoint;
 
 #if FakeHeating == true
-float   Temp_Mash = 18.90;
+float   Temp_MLT = 18.90;
 float   Plate_MLT = 18.90;
 #else
-float   Temp_Mash = 0.0;
+float   Temp_MLT = 0.0;
 #endif
 float   boilStageTemp;
 float   stageTemp;
@@ -233,8 +235,8 @@ void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean O
     if (OwsInitialize(ows)) {
       ows.write(0xBE);                           // Read scratchpad
       ows.read_bytes(data, 9);
-      if ( OneWire::crc8(data, 8) != data[8]) {  //if checksum fails start a new conversion right away
-        ew_byte(EM_ErrorNo(0), er_byte(EM_ErrorNo(0)) + 1);        // error counter 0
+      if ( OneWire::crc8(data, 8) != data[8]) {
+        // if checksum fails start a new conversion.
         return;
       }
     } else {
@@ -284,7 +286,7 @@ void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean O
 void Temperature() {
 
 #if USE_DS18020 == true
-  ReadOwSensor(ds, ConvMLT_start, Temp_Mash, true);
+  ReadOwSensor(dsm, ConvMLT_start, Temp_MLT, true);
 
 #if USE_HLT == true
   ReadOwSensor(dsh, ConvHLT_start, Temp_HLT, false);
@@ -306,19 +308,19 @@ void Temperature() {
     if (Plate_MLT < 250.0)
       Plate_MLT += (gCurrentTimeInMS - FakeHeatLastInMS) * 0.001;   // Simulate plate upto 250 degrees
   } else {
-    if (Plate_MLT > Temp_Mash)
-      Plate_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00002 * (Plate_MLT - Temp_Mash);
+    if (Plate_MLT > Temp_MLT)
+      Plate_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00002 * (Plate_MLT - Temp_MLT);
   }
   // If plate is hotter then the water with a offset so that cooling later works.
-  if (Plate_MLT > (Temp_Mash + 5.0)) {
-    if (Temp_Mash < 100.05)
-      Temp_Mash += (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000001 * (Plate_MLT - Temp_Mash);
+  if (Plate_MLT > (Temp_MLT + 5.0)) {
+    if (Temp_MLT < 100.05)
+      Temp_MLT += (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000001 * (Plate_MLT - Temp_MLT);
   }
   // Allways loose heat to the air
-  if (Temp_Mash > 16.0) {
-    Temp_Mash -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000010 * (Temp_Mash - 16.0);
+  if (Temp_MLT > 16.0) {
+    Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000010 * (Temp_MLT - 16.0);
     if (digitalRead(PumpControlPin) == HIGH) // More heat loss when pump is on
-      Temp_Mash -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000007 * (Temp_Mash - 16.0);
+      Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000007 * (Temp_MLT - 16.0);
   }
 
 #if USE_HLT == true
@@ -375,9 +377,9 @@ void PID_Heat(boolean autoMode) {
   if (TimeSpent != LastTimeSpent) {
     DebugTimeSerial();
     Serial.print(F("Mash Temp: "));
-    if (Temp_Mash <  10 && Temp_Mash >= 0) Serial.print(F("  "));
-    if (Temp_Mash < 100 && Temp_Mash >= 10) Serial.print(F(" "));
-    Serial.print(Temp_Mash);
+    if (Temp_MLT <  10 && Temp_MLT >= 0) Serial.print(F("  "));
+    if (Temp_MLT < 100 && Temp_MLT >= 10) Serial.print(F(" "));
+    Serial.print(Temp_MLT);
     Serial.print(F(" Setpoint: "));
     if (Setpoint <  10 && Setpoint >= 0) Serial.print(F("  "));
     if (Setpoint < 100 && Setpoint >= 10) Serial.print(F(" "));
@@ -565,7 +567,7 @@ void IodineTest(void) {
   TimerSet(IodineTime * 60);
   while (true) {
     Temperature();
-    Input = Temp_Mash;
+    Input = Temp_MLT;
     Prompt(P0_iodine);
     DisplayValues(true, true, true);
     PID_Heat(true);
@@ -622,7 +624,7 @@ void manual_mode() {
 
     Temperature();
     Setpoint = mset_temp;
-    Input = Temp_Mash;
+    Input = Temp_MLT;
 
     if (mtempReached == false) {
       if (Input >= Setpoint) {
@@ -774,7 +776,7 @@ void auto_mode() {
       pumpTime = 0;
       pumpRest = false;
 
-      Temp_Mash = 65.2;
+      Temp_MLT = 65.2;
 
     } else {
       ew_byte(EM_AutoModeStarted, 0);
@@ -786,7 +788,7 @@ void auto_mode() {
 startover:
 
     Temperature();
-    Input = Temp_Mash;
+    Input = Temp_MLT;
     TimerRun();
     if ((byte)((TimeLeft % 3600) / 60) != tmpMinute) {
       tmpMinute = (byte)((TimeLeft % 3600) / 60);
@@ -837,7 +839,6 @@ startover:
           Output = 255;
           stageTemp = Setpoint = er_byte(EM_BoilTemperature);
           stageTime = er_byte(EM_BoilTime);
-//          Prompt(P1_clear);
           Boil_output = er_byte(EM_BoilHeat);
 
           hopAdd = 0;
@@ -863,7 +864,7 @@ startover:
 #if DebugProcess == true
           DebugTimeSerial();
           Serial.print(F("Start Cooling Temp="));
-          Serial.print(Temp_Mash);
+          Serial.print(Temp_MLT);
           Serial.print(F(" Target="));
           Serial.println(stageTemp);
 #endif
@@ -915,7 +916,7 @@ startover:
           Serial.print(F("Whirlpool "));
           Serial.print(TimeWhirlPool);
           Serial.print(F(" mins. Temp="));
-          Serial.print(Temp_Mash);
+          Serial.print(Temp_MLT);
           Serial.print(F(" Sp="));
           Serial.println(Setpoint);
 #endif
@@ -989,7 +990,7 @@ startover:
              * If the current temperature is above the minute step,
              * skip to the next minute step.
              */
-            while ((Temp_Mash > (Setpoint + 1.0)) && (Setpoint <= (_EM_StageTemp - 1)))
+            while ((Temp_MLT > (Setpoint + 1.0)) && (Setpoint <= (_EM_StageTemp - 1)))
               Setpoint += 1.0;
             /*
              * Happens if strike temperature is higher
@@ -1019,7 +1020,7 @@ startover:
            * Final wait for the Mash step temperature
            */
           PID_Heat(true);
-          if (Temp_Mash >= stageTemp) {
+          if (Temp_MLT >= stageTemp) {
             Buzzer (3, 250);
             MashState = MashRest;
             if (CurrentState == StageMashIn)
@@ -1044,7 +1045,7 @@ startover:
            */
           if (((CurrentState == StageMashOut) && _EM_PumpMashout) || ((CurrentState != StageMashOut) && _EM_PumpOnMash)) {
             DeltaTemp = _EM_PumpRest * stageTemp / 120; // Maximum temperature drop before heating again.
-            if (pumpTime >= (_EM_PumpCycle + _EM_PumpRest) || ((stageTemp - Temp_Mash) > DeltaTemp)) {
+            if (pumpTime >= (_EM_PumpCycle + _EM_PumpRest) || ((stageTemp - Temp_MLT) > DeltaTemp)) {
               pumpTime = 0;
             }
             pumpRest = (pumpTime >= _EM_PumpCycle);
@@ -1090,7 +1091,7 @@ startover:
           Serial.print(F(" State: "));
           Serial.print(MashState);
           Serial.print(F(" Temp: "));
-          Serial.print(Temp_Mash);
+          Serial.print(Temp_MLT);
           Serial.print(F(" Sp: "));
           Serial.print(Setpoint);
           Serial.print(F("/"));
@@ -1137,23 +1138,26 @@ startover:
         }
 
         DisplayValues(true, tempBoilReached, false);
-        (_EM_PumpOnBoil && (Temp_Mash < _EM_PumpMaxTemp)) ? pump_on() : pump_off();
+        (_EM_PumpOnBoil && (Temp_MLT < _EM_PumpMaxTemp)) ? pump_on() : pump_off();
         PID_Heat(false);         // No PID control during boil
 
         if (! tempBoilReached) {
           Prompt(P0_stage);
           Prompt(P3_xxRx);
-          if ((Temp_Mash >= stageTemp) && ! tempBoilReached) {
+          if ((Temp_MLT >= stageTemp) && ! tempBoilReached) {
             tempBoilReached = true;
             Buzzer(3, 250);
-            TimerSet(stageTime * 60);
+            TimerSet((stageTime * 60) + 60);   // +1 minute for flameout
           }
         } else {
           // tempBoilReached
           if (newMinute)
             Prompt(P0_stage);   // Allow Hop add one minute to display
 
-          if (Temp_Mash >= stageTemp) {
+          if (TimeLeft < 60) {  // Flameout minute
+            Prompt(P3_xxRx);
+            Output = 0;
+          } else if (Temp_MLT >= stageTemp) {
             Prompt(P3_UDRx);
             ReadButton(Direction, Timer);
             Set(Boil_output, 100, 0, 1, Timer, Direction);
@@ -1192,8 +1196,8 @@ startover:
 
       case StageCooling:
 #if FakeHeating == true
-        if (Temp_Mash > 16.0)
-          Temp_Mash -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000001 * (Temp_Mash - 16.0);
+        if (Temp_MLT > 16.0)
+          Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000001 * (Temp_MLT - 16.0);
 #endif
         Prompt(P0_stage);
         Setpoint = stageTemp;
@@ -1210,13 +1214,13 @@ startover:
         /*
          * Make some noise when aproaching the final cooling temperature.
          */
-        if (! CoolBeep && (Temp_Mash < (stageTemp + 2.0))) {
+        if (! CoolBeep && (Temp_MLT < (stageTemp + 2.0))) {
           CoolBeep = true;
           Buzzer(4, 100);
         }
-        if (Temp_Mash < stageTemp)
+        if (Temp_MLT < stageTemp)
           Buzzer(3, 250);
-        if ((Temp_Mash < stageTemp) || (btn_Press(ButtonEnterPin, 2500))) {
+        if ((Temp_MLT < stageTemp) || (btn_Press(ButtonEnterPin, 2500))) {
           if (_EM_Whirlpool_7 && ! WP7Done) {
             NewState = StageWhirlpool7;
           } else if (_EM_Whirlpool_6 && ! WP6Done) {
@@ -1233,7 +1237,7 @@ startover:
       case StageWhirlpool9:
       case StageWhirlpool7:
       case StageWhirlpool6:
-        (Temp_Mash < _EM_PumpMaxTemp) ? pump_on() : pump_off();
+        (Temp_MLT < _EM_PumpMaxTemp) ? pump_on() : pump_off();
         Prompt(P0_stage);
         if (TimeLeft == 120) {
           /*
@@ -1281,7 +1285,7 @@ startover:
         // Initial questions, delay start etc.
         NewState = StagePrepare;
 #if FakeHeating == true
-        Temp_Mash = (word(er_byte(EM_StageTemp(0)), er_byte(EM_StageTemp(0) + 1)) / 16.0) - 15.0;
+        Temp_MLT = (word(er_byte(EM_StageTemp(0)), er_byte(EM_StageTemp(0) + 1)) / 16.0) - 15.0;
 #if USE_HLT == true
         if (HLT_SetPoint)
           Temp_HLT = HLT_SetPoint - 4.2;
@@ -1295,11 +1299,11 @@ startover:
          */
         Prompt(P0_prepare);
 #if USE_HLT == true
-        DisplayValues((Temp_Mash < Setpoint), false, HLT_SetPoint);
+        DisplayValues((Temp_MLT < Setpoint), false, HLT_SetPoint);
 #else
-        DisplayValues((Temp_Mash < Setpoint), false, false);
+        DisplayValues((Temp_MLT < Setpoint), false, false);
 #endif
-        if (Temp_Mash < Setpoint) {
+        if (Temp_MLT < Setpoint) {
           Output = 255;
           PID_Heat(false);
           break;
@@ -1361,9 +1365,9 @@ startover:
 
 
 void setup() {
-  //#if (DebugPID == true || DebugProcess == true || DebugButton == true || DebugReadWrite == true)
+#if (DebugPID == true || DebugProcess == true || DebugButton == true || DebugReadWrite == true || DebugErrors == true)
   Serial.begin(115200);
-  //#endif
+#endif
 
   pinMode (HeatControlPin, OUTPUT);
   pinMode (PumpControlPin, OUTPUT);
@@ -1421,12 +1425,14 @@ void setup() {
       EEPROM.write(EM_RecipeIndex(i), 0);
   }
 
+#if DebugErrors == true
   Serial.print(F("Errors: "));
   for (byte i = 0; i < 10; i++) {
     Serial.print(EEPROM.read(EM_ErrorNo(i)));
     Serial.print(F(" "));
   }
   Serial.println();
+#endif
 }
 
 

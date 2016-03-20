@@ -443,7 +443,7 @@ void Prompt(int Pmpt) {
         lcd.setCursor(6, 1);
       else
         lcd.setCursor(1, 1);
-      Temp = Temp_Mash;
+      Temp = Temp_MLT;
       FormatNumber(Temp, -1);
       lcd.print(Temp, 2);
       lcd.write((byte)0);
@@ -528,7 +528,7 @@ boolean WaitForConfirm(byte Type, boolean Pid, int P0, int P1, int P2, int P3) {
   Buzzer(1, 750);
   while (wtBtn) {
     Temperature();
-    Input = Temp_Mash;
+    Input = Temp_MLT;
     Prompt(P0);
     Prompt(P1);
     Prompt(P2);
