@@ -15,7 +15,7 @@
 
 // Serial debugging
 #define DebugPID        false
-#define DebugProcess    true
+#define DebugProcess    false
 #define DebugButton     false
 #define DebugReadWrite  false
 #define DebugErrors     true
@@ -33,7 +33,7 @@
 
 // hardware setup, adjust for your own board.
 #if USE_DS18020 == true
-const byte SensorMLTPin =   7;
+const byte SensorMLTPin =  7;
 #if USE_HLT == true
 const byte SensorHLTPin = 11;
 #endif
@@ -45,6 +45,7 @@ const byte SensorHLTPin = 11;
 #define HLTControlPin   10
 #endif
 
+// Keyboard pins
 #define ButtonUpPin     A3
 #define ButtonDownPin   A2
 #define ButtonStartPin  A1
@@ -58,6 +59,7 @@ OneWire dsh(SensorHLTPin);
 #endif
 #endif
 
+// LCD connections
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(A4, A5, 2, 3, 4, 5);
 
@@ -215,11 +217,10 @@ byte OwsInitialize(OneWire ows) {
 void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean Offset) {
   byte data[9];
 
-  if (! OwsInitialize(ows))
-    return;
-
   // start conversion and return
   if (!(Convert_start)) {
+    if (! OwsInitialize(ows))
+      return;
     ows.write(0x44, 0);
     Convert_start = true;
     return;
@@ -237,6 +238,7 @@ void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean O
       ows.read_bytes(data, 9);
       if ( OneWire::crc8(data, 8) != data[8]) {
         // if checksum fails start a new conversion.
+        ew_byte(EM_ErrorNo(0), er_byte(EM_ErrorNo(0)) + 1);        // error counter 0
         return;
       }
     } else {
@@ -756,7 +758,9 @@ void auto_mode() {
   boolean WP7Done              = false;
   boolean WP6Done              = false;
   boolean CoolBeep             = false;
+#if DebugProcess == true
   boolean Debugger             = false;
+#endif
   float   _EM_StageTemp;
   float   DeltaTemp;
 
@@ -939,7 +943,7 @@ startover:
           lcd.clear();
           break;
       }
-      
+
       CurrentState = NewState;
       ew_byte(EM_StageResume, CurrentState);
       ew_byte(EM_StageTimeLeft, 0);
@@ -966,11 +970,12 @@ startover:
         } else {
           (_EM_PumpOnMash && ! pumpRest) ? pump_on() : pump_off();
         }
-        Debugger = false;
         if (MashState == MashNone) {
           _EM_StageTemp = word(er_byte(EM_StageTemp(CurrentState)), er_byte(EM_StageTemp(CurrentState) + 1)) / 16.0;
           _EM_StageTime = er_byte(EM_StageTime(CurrentState));
+#if DebugProcess == true
           Debugger = true;
+#endif
           if (_EM_StageTime == 0) {
             NewState = CurrentState + 1;
             break;      // skip this step
@@ -984,7 +989,9 @@ startover:
            */
           if (CurrentState == StageMashIn) {
             Setpoint = _EM_StageTemp;
+#if DebugProcess == true
             Debugger = true;
+#endif
           } else {
             /*
              * If the current temperature is above the minute step,
@@ -1002,7 +1009,9 @@ startover:
              * Each minute increase the Setpoint with 1 degree
              */
             if (newMinute) {
+#if DebugProcess == true
               Debugger = true;
+#endif
               if (Setpoint <= (_EM_StageTemp - 1))
                 Setpoint += 1.0;
             }
@@ -1080,8 +1089,10 @@ startover:
               }
             }
           }
+#if DebugProcess == true
           if (newMinute)
             Debugger = true;
+#endif
         }
 #if DebugProcess == true
         if (Debugger == true) {
@@ -1104,6 +1115,7 @@ startover:
           Serial.print(pumpTime);
           Serial.print(F(" pumpRest: "));
           (pumpRest) ? Serial.println(F("true")) : Serial.println(F("false"));
+          Debugger = false;
         }
 #endif
         Prompt(P0_stage);
@@ -1176,8 +1188,8 @@ startover:
             lcd.setCursor(10, 0);
             lcd.print(F(" Hop: "));
             hopAdd++;
-//            if (hopAdd < 10)
-//              LCDSpace(1);
+            //            if (hopAdd < 10)
+            //              LCDSpace(1);
             lcd.print(hopAdd);
             delay(500);
             Buzzer(1, 750);
@@ -1472,6 +1484,14 @@ void loop() {
         mainMenu = 2;
       if (btn_Press(ButtonEnterPin, 500))
         mainMenu = 3;
+#if DebugErrors == true
+      // "Secret" counters reset
+      if (btn_Press(ButtonUpPin, 5000)) {
+        Buzzer(1, 250);
+        for (byte i = 0; i < 10; i++)
+          ew_byte(EM_ErrorNo(i), 0);
+      }
+#endif
       break;
   }
 

@@ -161,7 +161,7 @@ void Prompt(int Pmpt) {
       LCDSpace(20);
       return;
     case P0_banner:
-      lcd.print(F("MBSE ArdRims 0.0.1 ""\x07"));
+      lcd.print(F("MBSE ArdRims "VERSION" \x07"));
       return;
     case P0_manual:
 #if langNL == true
