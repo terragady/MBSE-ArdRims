@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define  VERSION        "0.0.2"
+#define  VERSION        "0.0.3"
 
 /*
    EEPROM MAP
@@ -149,8 +149,10 @@
         890 - 899 System Name 5
 */
 
+#if DebugErrors == true
 #define  EM_ErrorBase        900
 #define  EM_ErrorNo(i)       ((EM_ErrorBase)+(i))
+#endif
 
 
 //Stage names

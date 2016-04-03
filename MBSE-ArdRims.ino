@@ -238,7 +238,9 @@ void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean O
       ows.read_bytes(data, 9);
       if ( OneWire::crc8(data, 8) != data[8]) {
         // if checksum fails start a new conversion.
+#if DebugErrors == true
         ew_byte(EM_ErrorNo(0), er_byte(EM_ErrorNo(0)) + 1);        // error counter 0
+#endif
         return;
       }
     } else {
@@ -264,11 +266,15 @@ void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean O
      * Check sign bits, must be all zero's or all one's.
      */
     if ((raw & 0xf800) != 0) {
+#if DebugErrors == true
       ew_byte(EM_ErrorNo(1), er_byte(EM_ErrorNo(1)) + 1);        // error counter 1
+#endif
       return;
     }
     if ((raw & 0xf800) == 0xf800) {
+#if DebugErrors == true
       ew_byte(EM_ErrorNo(2), er_byte(EM_ErrorNo(1)) + 2);        // error counter 2
+#endif
       return;
     }
 
@@ -518,14 +524,14 @@ void HLT_hide() {
 /*
  * Center display values
  */
-void DisplayValues(boolean PWM, boolean Timer, boolean HLTset) {
+void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) {
 
   TimerRun();
   Prompt(X1Y1_temp);
   Prompt(X11Y1_setpoint);
 
 #if USE_HLT == true
-  if (PWM && HLTset)
+  if (PWM && HLTtemp)
     // Dual show Mash PWM and HLT temperature.
     (TimeSpent % 5) ? Prompt(X1Y2_pwm) : Prompt(X1Y2_temp);
   else if (PWM)
@@ -571,7 +577,11 @@ void IodineTest(void) {
     Temperature();
     Input = Temp_MLT;
     Prompt(P0_iodine);
-    DisplayValues(true, true, true);
+#if USE_HLT == true
+    DisplayValues(true, true, Temp_HLT != 0.0, true);
+#else
+    DisplayValues(true, true, false, true);
+#endif
     PID_Heat(true);
 #if USE_HLT == true
     if (HLT_SetPoint)
@@ -656,9 +666,9 @@ void manual_mode() {
     }
 
     (hheat) ? HLT_Heat() : HLT_hide();
-    DisplayValues(mheat, false, true);
+    DisplayValues(mheat, false, true, true);
 #else
-    DisplayValues(mheat, false, false);
+    DisplayValues(mheat, false, false, false);
 #endif
 
     switch (manualMenu) {
@@ -1122,9 +1132,9 @@ startover:
 #if USE_HLT == true
         if (HLT_SetPoint)
           HLT_Heat();
-        DisplayValues(true, (MashState == MashRest), HLT_SetPoint != 0);
+        DisplayValues(true, (MashState == MashRest), Temp_HLT != 0.0, HLT_SetPoint != 0);
 #else
-        DisplayValues(true, (MashState == MashRest), false);
+        DisplayValues(true, (MashState == MashRest), false, false);
 #endif
         Prompt(P3_xxRx);
         if ((btn_Press(ButtonStartPin, 50)) && ! Pause()) {
@@ -1149,13 +1159,20 @@ startover:
             stageTime = er_byte(EM_BoilTime);
         }
 
-        DisplayValues(true, tempBoilReached, false);
+#if USE_HLT == true
+        DisplayValues(true, tempBoilReached, Temp_HLT != 0.0, false);
+#else
+        DisplayValues(true, tempBoilReached, false, false);
+#endif
         (_EM_PumpOnBoil && (Temp_MLT < _EM_PumpMaxTemp)) ? pump_on() : pump_off();
         PID_Heat(false);         // No PID control during boil
 
         if (! tempBoilReached) {
           Prompt(P0_stage);
-          Prompt(P3_xxRx);
+          Prompt(P3_UDRx);
+          ReadButton(Direction, Timer);
+          Set(stageTemp, 105, 90, 1, Timer, Direction);
+          Setpoint = stageTemp;
           if ((Temp_MLT >= stageTemp) && ! tempBoilReached) {
             tempBoilReached = true;
             Buzzer(3, 250);
@@ -1213,7 +1230,7 @@ startover:
 #endif
         Prompt(P0_stage);
         Setpoint = stageTemp;
-        DisplayValues(false, false, false);
+        DisplayValues(false, false, false, false);
         Prompt(P3_UDPQ);
         ReadButton(Direction, Timer);
         if (_EM_Whirlpool_7 && ! WP7Done)
@@ -1267,7 +1284,7 @@ startover:
         }
         if (CurrentState != StageWhirlpool2)
           PID_Heat(true);     // Setpoint is already set
-        DisplayValues((CurrentState != StageWhirlpool2), true, false);
+        DisplayValues((CurrentState != StageWhirlpool2), true, false, false);
         Prompt(P3_xxRx);
         if (((btn_Press(ButtonStartPin, 50)) && (! Pause())) || (TimeLeft == 0)) {
           NewState = StageCooling;
@@ -1311,9 +1328,9 @@ startover:
          */
         Prompt(P0_prepare);
 #if USE_HLT == true
-        DisplayValues((Temp_MLT < Setpoint), false, HLT_SetPoint);
+        DisplayValues((Temp_MLT < Setpoint), false, Temp_HLT != 0.0, HLT_SetPoint);
 #else
-        DisplayValues((Temp_MLT < Setpoint), false, false);
+        DisplayValues((Temp_MLT < Setpoint), false, false, false);
 #endif
         if (Temp_MLT < Setpoint) {
           Output = 255;
@@ -1486,10 +1503,34 @@ void loop() {
         mainMenu = 3;
 #if DebugErrors == true
       // "Secret" counters reset
-      if (btn_Press(ButtonUpPin, 5000)) {
-        Buzzer(1, 250);
-        for (byte i = 0; i < 10; i++)
-          ew_byte(EM_ErrorNo(i), 0);
+      if (btn_Press(ButtonUpPin, 1000)) {
+        lcd.clear();
+        byte x = 1;
+        byte y = 0;
+        for (byte i = 0; i < 9; i++) {
+          lcd.setCursor(x, y);
+          lcd.print(er_byte(EM_ErrorNo(i)));
+          if (x == 1)
+            x = 7;
+          else if (x == 7)
+            x = 14;
+          else if (x == 14) {
+            x = 1;
+            y++;
+          }
+        }
+        Prompt(P3_erase);
+        Buzzer(1, 100);
+        while (true) {
+          if (btn_Press(ButtonEnterPin, 50))
+            break;
+          if (btn_Press(ButtonStartPin, 50)) {
+            for (byte i = 0; i < 10; i++)
+              ew_byte(EM_ErrorNo(i), 0);
+            break;
+          }
+        }
+        lcd.clear();
       }
 #endif
       break;

@@ -50,6 +50,9 @@
 #define  P3_xxRx         417
 #define  P3_QQBO         418
 #define  P3_OOxO         419
+#if DebugErrors == true
+#define  P3_erase        420
+#endif
 
 #define  X6Y1_temp       501
 #define  X1Y1_temp       502
@@ -436,6 +439,11 @@ void Prompt(int Pmpt) {
       lcd.print(F("Aan   Uit        Ok "));
 #endif
       return;
+#if DebugErrors == true
+    case P3_erase:
+      lcd.print(F("Clear all:  Yes  No "));
+      return;
+#endif
 
     case X6Y1_temp:
     case X1Y1_temp:

@@ -349,9 +349,9 @@ void set_Stages(void) {
   else
     Min = _previousMashtemp;
   editMash(6, 76.0, Min, false);          // A-Amylase 2
-  if (_previousMashtemp < 75.0)
-    Min = 75.0;
-  else
+//  if (_previousMashtemp < 75.0)
+//    Min = 75.0;
+//  else
     Min = _previousMashtemp;
   editMash(7, 80.0, Min, false);          // Mash-out
 
