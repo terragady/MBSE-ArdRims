@@ -13,8 +13,13 @@ unsigned long _TimeStart;
 void TimerRun() {
 
   gCurrentTimeInMS = millis();
-  if ((gCurrentTimeInMS - _TimeStart) > 977) {  // 1 millis() is 1,024 mSec.
-    _TimeStart += (gCurrentTimeInMS - _TimeStart);
+  /*
+   * 1 millis() is 1,024 mSec. But the Arduino clock is not 
+   * very acurate. The value 988 works for my NANO board, but
+   * that might not work for you.
+   */
+  if ((gCurrentTimeInMS - _TimeStart) > 988) {
+    _TimeStart = gCurrentTimeInMS;
     TimeSpent++;
 
     if (TimeLeft) {

@@ -7,10 +7,17 @@
 #include <OneWire.h>
 #include <PID_v1.h>
 
+//SET PCB
+// 1 Brauduino Original (Matho's PCB)
+// 2 Brauduino by DanielXan
+// 3 ArdBir by DanielXan
+// 4 Protoduino NANO by J. Klinge
+// 5 ArdRims NANO by C. Broek
+#define PCBType 5
 
 // should be false
 #define FakeHeating     false       // For development only.
-#define USE_HLT         true        // A HLT shared with the MLT. (Not yet).
+#define USE_HLT         false       // A HLT shared with the MLT. (Not yet).
 #define Silent          false       // No beeps (during development).
 
 // Serial debugging
@@ -22,6 +29,7 @@
 
 
 // Default language is English, others must be set.
+// Nederlands.
 #define langNL          true
 
 // Don not change this next block
@@ -31,26 +39,67 @@
 #define USE_DS18020     true
 #endif
 
-// hardware setup, adjust for your own board.
 #if USE_DS18020 == true
+// Normal brew sensor
+#if PCBType == 1
+const byte SensorMLTPin = 11;
+#elif PCBType == 2
+const byte SensorMLTPin =  8;
+#elif (PCBType == 3 || PCBType == 4)
+const byte SensorMLTPin =  7;
+#elif PCBType == 5
 const byte SensorMLTPin =  7;
 #if USE_HLT == true
+// Sensor for sparge water.
 const byte SensorHLTPin = 11;
-#endif
-#endif
+#endif // USE_HLT
+#endif // PCBType
+#endif // USE_DS18020
+
+// Output Pump, Buzzer, Heater
+#if PCBType == 1
+#define PumpControlPin   8
+#define BuzzControlPin   10
+#define HeatControlPin   9
+#elif PCBType == 2
+#define PumpControlPin   9
+#define BuzzControlPin   10
+#define HeatControlPin   11
+#elif PCBType == 3
+#define PumpControlPin   6
+#define BuzzControlPin   8
+#define HeatControlPin   9
+#elif PCBType == 4
+#define PumpControlPin   6
+#define BuzzControlPin   A7
+#define HeatControlPin   9
+#elif PCBType == 5
 #define PumpControlPin   6
 #define BuzzControlPin   8
 #define HeatControlPin   9
 #if USE_HLT == true
+// Heater for sparge water
 #define HLTControlPin   10
 #endif
+#endif
 
-// Keyboard pins
+// Keyboard buttons
+#if (PCBType == 1 || PCBType == 5)
 #define ButtonUpPin     A3
 #define ButtonDownPin   A2
 #define ButtonStartPin  A1
 #define ButtonEnterPin  A0
-
+#elif PCBType == 2
+#define ButtonUpPin     A3
+#define ButtonDownPin   A2
+#define ButtonStartPin  A0
+#define ButtonEnterPin  A1
+#elif (PCBType == 3 || PCBType == 4)
+#define ButtonUpPin     A2
+#define ButtonDownPin   A3
+#define ButtonStartPin  A0
+#define ButtonEnterPin  A1
+#endif
 
 #if USE_DS18020 == true
 OneWire dsm(SensorMLTPin);
@@ -61,7 +110,11 @@ OneWire dsh(SensorHLTPin);
 
 // LCD connections
 #include <LiquidCrystal.h>
+#if (PCBType == 1 || PCBType == 2)
+LiquidCrystal lcd(2, 3, 4, 5, 6, 7);
+#elif (PCBType == 3 || PCBType == 4 || PCBType == 5)
 LiquidCrystal lcd(A4, A5, 2, 3, 4, 5);
+#endif
 
 // ==============================================
 // END OF SETTING SECTION
@@ -284,7 +337,7 @@ void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean O
       TempC = (float)raw / 16.0;
   }
 }
-#endif
+#endif // USE_DS18020
 
 
 
@@ -299,7 +352,7 @@ void Temperature() {
 #if USE_HLT == true
   ReadOwSensor(dsh, ConvHLT_start, Temp_HLT, false);
 #endif
-#endif
+#endif // USE_DS18020
 
 #if FakeHeating == true
   TimerRun();
@@ -1394,7 +1447,7 @@ startover:
 
 
 void setup() {
-#if (DebugPID == true || DebugProcess == true || DebugButton == true || DebugReadWrite == true || DebugErrors == true)
+#if (DebugPID == true || DebugProcess == true || DebugButton == true || DebugReadWrite == true)
   Serial.begin(115200);
 #endif
 
@@ -1453,15 +1506,6 @@ void setup() {
     for (byte i = 0; i < 10; i++)
       EEPROM.write(EM_RecipeIndex(i), 0);
   }
-
-#if DebugErrors == true
-  Serial.print(F("Errors: "));
-  for (byte i = 0; i < 10; i++) {
-    Serial.print(EEPROM.read(EM_ErrorNo(i)));
-    Serial.print(F(" "));
-  }
-  Serial.println();
-#endif
 }
 
 
