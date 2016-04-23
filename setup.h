@@ -308,7 +308,7 @@ void set_Stages(void) {
    * and make sure the temperature goes up.
    */
   editMash(0, 75.0, 20.0, false);         // Mash-in
-  _previousMashtemp -= 3.5;               // Mashin may be higher then first step.
+  _previousMashtemp -= 5.0;               // Mashin may be higher then first step.
   if (_previousMashtemp < 55.0) {
     if (_previousMashtemp < 25.0)
       Min = 25.0;
