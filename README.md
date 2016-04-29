@@ -48,6 +48,17 @@ Differences between other systems and MBSE-ArdRims:
     there is now a separate Save and a Save-as choice.
 16. Only Celcius now.
 17. The cooling destination temperature can be set as a Auto/Recipe setting.
-18. More accurate timing.
+18. Better timing using the interrupt driven secTimer library. This works
+    much better then the old millis() function.
 
+
+Next to the standard Arduino libraries you need to install the following extra
+libraries:
+
+    OneWire
+    PID
+    secTimer
+
+In the menu: Sketch -> Include Library -> Manage Libraries.
+In the new windows you can search and install these libraries.
 

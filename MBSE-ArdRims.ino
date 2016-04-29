@@ -116,6 +116,14 @@ LiquidCrystal lcd(2, 3, 4, 5, 6, 7);
 LiquidCrystal lcd(A4, A5, 2, 3, 4, 5);
 #endif
 
+/*
+ * Timer using the interrupt driven secTimer library.
+ */
+#include <secTimer.h>
+
+secTimer myTimer;
+
+
 // ==============================================
 // END OF SETTING SECTION
 // ==============================================
@@ -151,6 +159,7 @@ unsigned long gSystemStartTime;          // in milliseconds.
 unsigned long gCurrentTimeInMS;          // in milliseconds.
 unsigned long w_StartTime;
 unsigned long Timer;
+unsigned long _seconds;                  // timer seconds.
 #if FakeHeating == true
 unsigned long FakeHeatLastInMS;          // in milliseconds.
 #endif
@@ -1488,7 +1497,8 @@ void setup() {
   lcd.createChar(6, RevHeatONOFF); // Heat On-OFF
   lcd.createChar(7, Language);     // Language Symbol
 
-  TimerSet(0);   // Initialize the timers.
+  myTimer.startTimer();            // Start the main timer
+  TimerSet(0);                     // Initialize the timers.
 
   // EEPROM data upgrades
   if ((EEPROM.read(EM_Signature) != 'M') || (EEPROM.read(EM_Signature + 1) != 'B')) {

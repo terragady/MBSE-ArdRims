@@ -4,8 +4,6 @@
 
 unsigned long TimeLeft;
 unsigned long TimeSpent;
-unsigned long _TimeStart;
-
 
 /*
  * Should be called as much as possible
@@ -13,13 +11,8 @@ unsigned long _TimeStart;
 void TimerRun() {
 
   gCurrentTimeInMS = millis();
-  /*
-   * 1 millis() is 1,024 mSec. But the Arduino clock is not 
-   * very acurate. The value 988 works for my NANO board, but
-   * that might not work for you.
-   */
-  if ((gCurrentTimeInMS - _TimeStart) > 988) {
-    _TimeStart = gCurrentTimeInMS;
+  if (_seconds != myTimer.readTimer()) {
+    _seconds = myTimer.readTimer();
     TimeSpent++;
 
     if (TimeLeft) {
@@ -38,7 +31,6 @@ void TimerRun() {
 void TimerSet(unsigned long seconds) {
   TimeSpent = 0;
   TimeLeft = seconds;
-  _TimeStart = millis();
 }
 
 

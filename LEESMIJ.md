@@ -53,5 +53,17 @@ Verschillen tussen andere software en MBSE-ArdRims:
     gebruikte recept. Ook is er nu een aparte Save en Save-as keuze.
 16. Alleen nog Celcius.
 17. De koel temperatuur wordt opgeslagen als een Auto/Recept instelling.
-18. Meer zuivere tijd tellers.
+18. De timing wordt gedaan met een interrupt timer van de secTimer library.
+    Dat werkt stukken beter als de oude millis() methode.
+
+
+Naast de standaard Arduino bibliotheken zijn de volgende extra bibliotheken
+nodig:
+
+    OneWire
+    PID
+    secTimer
+
+Via het menu: Schets -> Bibliotheken gebruiken -> Bibliotheken beheren.
+In het nieuwe window kun je zoeken naar deze biblitheken en installeren.
 
