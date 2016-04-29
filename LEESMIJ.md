@@ -3,16 +3,16 @@
 
 Arduino software voor een eenpans brouw systeem met wat extras. De code is
 gebaseerd op Open ArdBir, maar het meeste is geheel opnieuw geschreven.
-De recepten opslag is not uitwisselbaar met Ope-ArdBir door een bug in de
+De recepten opslag is niet uitwisselbaar met Open-ArdBir door een bug in de
 Open-ArdBir code. De meeste, maar niet alle EEPROM opslag instellingen zijn
 uitwisselbaar zodat het in gebruik nemen van deze software eenvoudig is.
-Maar, controleer alle instellingen wanneer je deze software installeerd of
-als je andere software gaaat gebruiken!
+Maar, controleer alle instellingen wanneer je deze software installeert of
+als je andere software gaat gebruiken!
 
 
 Verschillen tussen andere software en MBSE-ArdRims:
 
-1.  Alleen voor electrische systemen, ik heb geen plannen voor gas.
+1.  Alleen voor elektrische systemen, ik heb geen plannen voor gas.
 2.  Alleen 20x4 LCD displays.
 3.  Tijdens de maisch stappen is de PID altijd in gebruik, er is geen vol
     gas methode als de temperatuur te ver af is.
@@ -30,7 +30,7 @@ Verschillen tussen andere software en MBSE-ArdRims:
     100% gebruikt.
 7.  Er zijn nu 4 Whirlpool fases mogelijk. De instellingen worden opgeslagen
     in het geheugen voor de recepten. Iedere whirlpool fase kan zijn:
-    1. 88..100 Celcius, mininum temperatuur 93.
+    1. 88..100 Celcius, minimum temperatuur 93.
     2. 71..77 Celcius, minimum temperatuur 74.
     3. 60..66 Celcius, minimum temperatuur 63.
     4. Na de laatste koeling fase, geen minimum temperatuur.
