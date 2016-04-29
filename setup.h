@@ -298,9 +298,9 @@ void set_Stages(void) {
   float Min;
   int   i;
 #if langNL == true
-  char  *Hopstr = "Hopgift .. ";
+  char  *Hopstr = (char *)"Hopgift .. ";
 #else
-  char  *Hopstr = "Hop add .. ";
+  char  *Hopstr = (char *)"Hop add .. ";
 #endif
 
   /*
