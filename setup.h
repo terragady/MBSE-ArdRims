@@ -263,7 +263,7 @@ void set_PID(void) {
 void set_Unit(void) {
   //        23456789012
 #if langNL == true
-  editByte("Kook temp. ", EM_BoilTemperature, 105, 90, & displaySimpleTemperature);
+  editByte("Kook temp. ", EM_BoilTemperature, 105, 60, & displaySimpleTemperature);
   editByte("Pomp Cyclus", EM_PumpCycle, 15, 5, & displayTime);
   editByte("Pomp Rust  ", EM_PumpRest, 5, 0, & displayTime);
   editByte("Pmp PreMash", EM_PumpPreMash, 1, 0, & displayOnOff);
@@ -294,66 +294,28 @@ void set_Unit(void) {
 }
 
 
-void set_Stages(void) {
-  float Min;
+void set_Auto_Mash(void) {
+  /*
+   * Edit mash steps, make sure the temperature goes up.
+   */
+  editMash(0, 75.0, 20.0, false);                     // Mash-in
+  editMash(1, 75.0, _previousMashtemp - 5.0, false);  // Step 1 (Mandatory)
+  editMash(2, 75.0, _previousMashtemp + 1.0, true);   // Step 2
+  editMash(3, 75.0, _previousMashtemp + 1.0, true);   // Step 3
+  editMash(4, 75.0, _previousMashtemp + 1.0, true);   // Step 4
+  editMash(5, 75.0, _previousMashtemp + 1.0, true);   // Step 5
+  editMash(6, 75.0, _previousMashtemp + 1.0, true);   // Step 6
+  editMash(7, 85.0, _previousMashtemp      , false);  // Mash-out
+}
+
+
+void set_Auto_Boil(void) {
   int   i;
 #if langNL == true
   char  *Hopstr = (char *)"Hopgift .. ";
 #else
   char  *Hopstr = (char *)"Hop add .. ";
 #endif
-
-  /*
-   * Only edit Mash steps that are in Min/Max range
-   * and make sure the temperature goes up.
-   */
-  editMash(0, 75.0, 20.0, false);         // Mash-in
-  _previousMashtemp -= 5.0;               // Mashin may be higher then first step.
-  if (_previousMashtemp < 55.0) {
-    if (_previousMashtemp < 25.0)
-      Min = 25.0;
-    else
-      Min = _previousMashtemp;
-    editMash(1, 55.0, Min, true);         // Phytase
-  }
-  if (_previousMashtemp < 50.0) {
-    if (_previousMashtemp < 35.0)
-      Min = 35.0;
-    else
-      Min = _previousMashtemp;
-    editMash(2, 50.0, Min, true);         // Glucanase
-  }
-  if (_previousMashtemp < 60.0) {
-    if (_previousMashtemp < 45.0)
-      Min = 45.0;
-    else
-      Min = _previousMashtemp;
-    editMash(3, 60.0, Min, true);         // Protease
-  }
-  if (_previousMashtemp < 70.0) {
-    if (_previousMashtemp < 50.0)
-      Min = 50.0;
-    else
-      Min = _previousMashtemp;
-    editMash(4, 70.0, Min, true);         // B-Amylase
-  }
-  if (_previousMashtemp < 76.0) {
-    if (_previousMashtemp < 60.0)
-      Min = 60.0;
-    else
-      Min = _previousMashtemp;
-    editMash(5, 76.0, Min, true);         // A-Amylase 1
-  }
-  if (_previousMashtemp < 60.0)
-    Min = 60.0;
-  else
-    Min = _previousMashtemp;
-  editMash(6, 76.0, Min, false);          // A-Amylase 2
-//  if (_previousMashtemp < 75.0)
-//    Min = 75.0;
-//  else
-    Min = _previousMashtemp;
-  editMash(7, 80.0, Min, false);          // Mash-out
 
   /*
    * Set Boiltime and hop additions.
@@ -920,9 +882,9 @@ void setup_mode() {
 
       case (2):
 #if langNL == true
-        lcd.print(F("Automaat instellen"));
+        lcd.print(F(" Maisch programma "));
 #else
-        lcd.print(F("  Set Automation  "));
+        lcd.print(F(" Mash Automation  "));
 #endif
         Prompt(P3_SGQO);
         if (btn_Press(ButtonUpPin, 50))
@@ -930,10 +892,25 @@ void setup_mode() {
         if (btn_Press(ButtonDownPin, 50))
           setupMenu = 3;
         if (btn_Press(ButtonEnterPin, 50))
-          set_Stages();
+          set_Auto_Mash();
         break;
 
       case (3):
+#if langNL == true
+        lcd.print(F("  Kook programma  "));
+#else
+        lcd.print(F(" Boil Automation  "));
+#endif
+        Prompt(P3_SGQO);
+        if (btn_Press(ButtonUpPin, 50))
+          setupMenu = 2;
+        if (btn_Press(ButtonDownPin, 50))
+          setupMenu = 4;
+        if (btn_Press(ButtonEnterPin, 50))
+          set_Auto_Boil();
+        break;
+
+      case (4):
 #if langNL == true
         lcd.print(F(" Recepten beheer  "));
 #else
@@ -941,7 +918,7 @@ void setup_mode() {
 #endif
         Prompt(P3_SxQO);
         if (btn_Press(ButtonUpPin, 50))
-          setupMenu = 2;
+          setupMenu = 3;
         if (btn_Press(ButtonEnterPin, 50))
           set_Recipes();
         break;

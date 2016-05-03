@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define  VERSION        "0.0.7"
+#define  VERSION        "0.0.8"
 
 /*
    EEPROM MAP
@@ -157,12 +157,12 @@
 
 //Stage names
 #define StageMashIn           0     // Mash-in
-#define StagePhytase          1     // Opt. Phytase
-#define StageGlucanase        2     // Opt. Glucanase
-#define StageProtease         3     // Opt. Protease
-#define StageBamylase         4     // Opt. B-Amylase
-#define StageAamylase1        5     // Opt. A-Amylase1
-#define StageAamylase2        6     // A-Amylase2 + Iodine
+#define StageMash1            1     // Opt. Phytase
+#define StageMash2            2     // Opt. Glucanase
+#define StageMash3            3     // Opt. Protease
+#define StageMash4            4     // Opt. B-Amylase
+#define StageMash5            5     // Opt. A-Amylase1
+#define StageMash6            6     // A-Amylase2 + Iodine
 #define StageMashOut          7     // Mash-out
 #define StageBoil             8     // Boil
 #define StageCooling          9     // Cooling

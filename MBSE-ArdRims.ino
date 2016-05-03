@@ -13,6 +13,7 @@
 // 3 ArdBir by DanielXan
 // 4 Protoduino NANO by J. Klinge
 // 5 ArdRims NANO by C. Broek
+// 6 ArduinoBrewboard by J. Klinge ?? 2 soorten ??
 #define PCBType 5
 
 // should be false
@@ -45,7 +46,7 @@
 const byte SensorMLTPin = 11;
 #elif PCBType == 2
 const byte SensorMLTPin =  8;
-#elif (PCBType == 3 || PCBType == 4)
+#elif (PCBType == 3 || PCBType == 4 || PCBType == 6)
 const byte SensorMLTPin =  7;
 #elif PCBType == 5
 const byte SensorMLTPin =  7;
@@ -81,6 +82,10 @@ const byte SensorHLTPin = 11;
 // Heater for sparge water
 #define HLTControlPin   10
 #endif
+#elif PCBType == 6
+#define PumpControlPin   6
+#define BuzzControlPin   11
+#define HeatControlPin   9
 #endif
 
 // Keyboard buttons
@@ -94,7 +99,7 @@ const byte SensorHLTPin = 11;
 #define ButtonDownPin   A2
 #define ButtonStartPin  A0
 #define ButtonEnterPin  A1
-#elif (PCBType == 3 || PCBType == 4)
+#elif (PCBType == 3 || PCBType == 4 || PCBType == 6)
 #define ButtonUpPin     A2
 #define ButtonDownPin   A3
 #define ButtonStartPin  A0
@@ -114,11 +119,13 @@ OneWire dsh(SensorHLTPin);
 LiquidCrystal lcd(2, 3, 4, 5, 6, 7);
 #elif (PCBType == 3 || PCBType == 4 || PCBType == 5)
 LiquidCrystal lcd(A4, A5, 2, 3, 4, 5);
+#elif (PCBType == 6)
+LiquidCrystal lcd(A5, A4, 2, 3, 4, 5);
 #endif
 
 /*
- * Timer using the interrupt driven secTimer library.
- */
+   Timer using the interrupt driven secTimer library.
+*/
 #include <secTimer.h>
 
 secTimer myTimer;
@@ -129,23 +136,23 @@ secTimer myTimer;
 // ==============================================
 
 /*
- MBSE-ArdRims is a single (well ..) vessel RIMS controller. It is
- based on ideas of braudino, Open-ArdBir, BrewManiac and maybe others.
- Most of the code is written from scratch.
+  MBSE-ArdRims is a single (well ..) vessel RIMS controller. It is
+  based on ideas of braudino, Open-ArdBir, BrewManiac and maybe others.
+  Most of the code is written from scratch.
 
 
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
@@ -310,10 +317,10 @@ void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean O
     }
 
     /*
-     * After a sensor is connected, or after power-up, the sensor resolution
-     * can be different from what we desire. If so, configure the sensor and
-     * start over again.
-     */
+       After a sensor is connected, or after power-up, the sensor resolution
+       can be different from what we desire. If so, configure the sensor and
+       start over again.
+    */
     if ((data[4] & 0x60) != 0x60) {
       OwsInitialize(ows);
       ows.write(0x4E);           // Write scratchpad
@@ -325,8 +332,8 @@ void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean O
     int16_t raw = (data[1] << 8) | data[0];
 
     /*
-     * Check sign bits, must be all zero's or all one's.
-     */
+       Check sign bits, must be all zero's or all one's.
+    */
     if ((raw & 0xf800) != 0) {
 #if DebugErrors == true
       ew_byte(EM_ErrorNo(1), er_byte(EM_ErrorNo(1)) + 1);        // error counter 1
@@ -351,8 +358,8 @@ void ReadOwSensor(OneWire ows, boolean & Convert_start, float & TempC, boolean O
 
 
 /*
- * Read Temperature sensors
- */
+   Read Temperature sensors
+*/
 void Temperature() {
 
 #if USE_DS18020 == true
@@ -370,10 +377,10 @@ void Temperature() {
   if ((gCurrentTimeInMS - FakeHeatLastInMS) < 500)
     return;
   /*
-   * Make this fake heater a bit more real by using a simulated heatplate.
-   * We heatup that plate and then transfer the heat to the water.
-   * That way we get a nice overshoot like in real life.
-   */
+     Make this fake heater a bit more real by using a simulated heatplate.
+     We heatup that plate and then transfer the heat to the water.
+     That way we get a nice overshoot like in real life.
+  */
   if (digitalRead(HeatControlPin) == HIGH) {
     if (Plate_MLT < 250.0)
       Plate_MLT += (gCurrentTimeInMS - FakeHeatLastInMS) * 0.001;   // Simulate plate upto 250 degrees
@@ -433,10 +440,10 @@ void LoadPIDsettings() {
 
 
 /*
- * PID control.
- *  autoMode = true  - PID is active.
- *  autoMode = false - Output value is send as slow PWM
- */
+   PID control.
+    autoMode = true  - PID is active.
+    autoMode = false - Output value is send as slow PWM
+*/
 void PID_Heat(boolean autoMode) {
   double RealPower;
 
@@ -461,14 +468,14 @@ void PID_Heat(boolean autoMode) {
     myPID.Compute();
 
   /*
-   * Apply logarithmic factor to the output.
-   */
+     Apply logarithmic factor to the output.
+  */
   Output = int(Output);
   RealPower = Output;
   if (RealPower && LogFactor) {
     /*
-     * Make sure that even 1% Output results in enough power to actually heat the water.
-     */
+       Make sure that even 1% Output results in enough power to actually heat the water.
+    */
     RealPower += ((255 - Output) / (21 - LogFactor));
   }
 
@@ -501,8 +508,8 @@ void PID_Heat(boolean autoMode) {
 
 
 /*
- * Boil/Mash kettle heat control
- */
+   Boil/Mash kettle heat control
+*/
 void bk_heat_on() {
 #if USE_HLT == true
   HLT_block = true;
@@ -539,8 +546,8 @@ void bk_heat_hide() {
 
 
 /*
- * Pump control.
- */
+   Pump control.
+*/
 void pump_on() {
   digitalWrite(PumpControlPin, HIGH);
   LCDChar(19, 2, 4);
@@ -557,8 +564,8 @@ void pump_hide() {
 
 
 /*
- * HLT heating control
- */
+   HLT heating control
+*/
 #if USE_HLT == true
 void HLT_on() {
   if (HLT_block == false) {
@@ -584,8 +591,8 @@ void HLT_hide() {
 
 
 /*
- * Center display values
- */
+   Center display values
+*/
 void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) {
 
   TimerRun();
@@ -617,8 +624,8 @@ void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) 
 
 
 /*
- * Toggle pump
- */
+   Toggle pump
+*/
 void PumpControl() {
   //turns the pump on or off
   if (btn_Press(ButtonStartPin, 50))
@@ -628,9 +635,9 @@ void PumpControl() {
 
 
 /*
- * Iodine test, continue after user presses Enter
- * or after the iodine timeout.
- */
+   Iodine test, continue after user presses Enter
+   or after the iodine timeout.
+*/
 void IodineTest(void) {
   byte IodineTime = er_byte(EM_IodoneTime);
 
@@ -663,8 +670,8 @@ void IodineTest(void) {
 
 
 /*
- * Manual control
- */
+   Manual control
+*/
 void manual_mode() {
   byte    manualMenu   = 0;
   float   mset_temp    = 35.0;
@@ -803,8 +810,8 @@ void manual_mode() {
 
 
 /*
- * Automatic brew control
- */
+   Automatic brew control
+*/
 void auto_mode() {
   byte    NewState             = StageInit;
   byte    tmpMinute            = 0;
@@ -821,6 +828,7 @@ void auto_mode() {
   byte    _EM_Whirlpool_2      = er_byte(EM_Whirlpool_2);
   byte    _EM_PumpCycle        = er_byte(EM_PumpCycle);
   byte    _EM_PumpRest         = er_byte(EM_PumpRest);
+  byte    LastMashStep         = 0;
   byte    ResumeTime;
   boolean Resume               = false;
   boolean tempBoilReached      = false;
@@ -840,8 +848,21 @@ void auto_mode() {
   LoadPIDsettings();
 
   /*
-   * Check for a crashed/unfinished brew
-   */
+     See what our last Mash Step is
+  */
+  for (byte i = 1; i < 7; i++) {
+    if (er_byte(EM_StageTime(i)))
+      LastMashStep = i;
+  }
+#if DebugProcess == true
+  DebugTimeSerial();
+  Serial.print(F("Last Mash Step: "));
+  Serial.println(LastMashStep);
+#endif
+
+  /*
+     Check for a crashed/unfinished brew
+  */
   if (er_byte(EM_AutoModeStarted)) {
     lcd.clear();
     if (WaitForConfirm(2, false, 0, P1_resume, 0, P3_proceed)) {
@@ -874,8 +895,8 @@ startover:
     }
 
     /*
-     * New state change
-     */
+       New state change
+    */
     if (NewState != CurrentState) {
 
 #if DebugProcess == true
@@ -894,17 +915,17 @@ startover:
 #endif
 
       /*
-       * Do once the state we enter
-       */
+         Do once the state we enter
+      */
       switch (NewState) {
 
         case StageMashIn:
-        case StagePhytase:
-        case StageGlucanase:
-        case StageProtease:
-        case StageBamylase:
-        case StageAamylase1:
-        case StageAamylase2:
+        case StageMash1:
+        case StageMash2:
+        case StageMash3:
+        case StageMash4:
+        case StageMash5:
+        case StageMash6:
         case StageMashOut:
           MashState = MashNone;
           pumpTime = 0;
@@ -1000,8 +1021,8 @@ startover:
 
         case StagePrepare:
           /*
-           * Pump Prime
-           */
+             Pump Prime
+          */
           Prompt(P1_prime);
           for (byte i = 1; i < 6; i++) {
             pump_on();
@@ -1023,17 +1044,17 @@ startover:
     }
 
     /*
-     * Current unchanged state
-     */
+       Current unchanged state
+    */
     switch (CurrentState) {
 
       case StageMashIn:
-      case StagePhytase:
-      case StageGlucanase:
-      case StageProtease:
-      case StageBamylase:
-      case StageAamylase1:
-      case StageAamylase2:
+      case StageMash1:
+      case StageMash2:
+      case StageMash3:
+      case StageMash4:
+      case StageMash5:
+      case StageMash6:
       case StageMashOut:
         if (CurrentState == StageMashIn) {
           (_EM_PumpPreMash && ! pumpRest) ? pump_on() : pump_off();
@@ -1057,8 +1078,8 @@ startover:
 
         } else if (MashState == MashHeating) {
           /*
-           * Only in Mash-in we set the target temperature immediatly.
-           */
+             Only in Mash-in we set the target temperature immediatly.
+          */
           if (CurrentState == StageMashIn) {
             Setpoint = _EM_StageTemp;
 #if DebugProcess == true
@@ -1066,20 +1087,20 @@ startover:
 #endif
           } else {
             /*
-             * If the current temperature is above the minute step,
-             * skip to the next minute step.
-             */
+               If the current temperature is above the minute step,
+               skip to the next minute step.
+            */
             while ((Temp_MLT > (Setpoint + 1.0)) && (Setpoint <= (_EM_StageTemp - 1)))
               Setpoint += 1.0;
             /*
-             * Happens if strike temperature is higher
-             * then the first normal mash step.
-             */
+               Happens if strike temperature is higher
+               then the first normal mash step.
+            */
             if (Setpoint > _EM_StageTemp)
               Setpoint = _EM_StageTemp;
             /*
-             * Each minute increase the Setpoint with 1 degree
-             */
+               Each minute increase the Setpoint with 1 degree
+            */
             if (newMinute) {
 #if DebugProcess == true
               Debugger = true;
@@ -1091,15 +1112,15 @@ startover:
           stageTemp = Setpoint;
           PID_Heat(true);
           /*
-           * Have we set the final Mashstep Setpoint temperature?
-           */
+             Have we set the final Mashstep Setpoint temperature?
+          */
           if (Setpoint >= _EM_StageTemp)
             MashState = MashWaitTemp;
 
         } else if (MashState == MashWaitTemp) {
           /*
-           * Final wait for the Mash step temperature
-           */
+             Final wait for the Mash step temperature
+          */
           PID_Heat(true);
           if (Temp_MLT >= stageTemp) {
             Buzzer (3, 250);
@@ -1121,9 +1142,9 @@ startover:
           }
         } else if (MashState == MashRest) {
           /*
-           * Mash step rest time
-           * Pump rest control
-           */
+             Mash step rest time
+             Pump rest control
+          */
           if (((CurrentState == StageMashOut) && _EM_PumpMashout) || ((CurrentState != StageMashOut) && _EM_PumpOnMash)) {
             DeltaTemp = _EM_PumpRest * stageTemp / 120; // Maximum temperature drop before heating again.
             if (pumpTime >= (_EM_PumpCycle + _EM_PumpRest) || ((stageTemp - Temp_MLT) > DeltaTemp)) {
@@ -1134,8 +1155,8 @@ startover:
           (pumpRest) ? bk_heat_off() : PID_Heat(true);
 
           /*
-           * End of mash step time
-           */
+             End of mash step time
+          */
           if (TimeLeft == 0) {
             NewState = CurrentState + 1;
             if ((CurrentState == StageMashIn) && (! er_byte(EM_SkipAdd))) {
@@ -1147,7 +1168,7 @@ startover:
                 NewState = StageAborted;
               }
             }
-            if ((CurrentState == StageAamylase2) && (! er_byte(EM_SkipIodine))) {
+            if ((CurrentState == LastMashStep) && (! er_byte(EM_SkipIodine))) {
               (_EM_PumpOnMash) ? pump_on() : pump_off();
               IodineTest();
             }
@@ -1259,8 +1280,8 @@ startover:
           }
 
           /*
-           * Check for Hop (or something else) addition
-           */
+             Check for Hop (or something else) addition
+          */
           if (newMinute && (hopAdd < nmbrHops) && (stageTime == hopTime)) {
             Buzzer(4, 250);
             // Put it on the display, it will be visible during one minute
@@ -1303,8 +1324,8 @@ startover:
           Set(stageTemp, 30, 10, 0.25, Timer, Direction);
         PumpControl();
         /*
-         * Make some noise when aproaching the final cooling temperature.
-         */
+           Make some noise when aproaching the final cooling temperature.
+        */
         if (! CoolBeep && (Temp_MLT < (stageTemp + 2.0))) {
           CoolBeep = true;
           Buzzer(4, 100);
@@ -1332,10 +1353,10 @@ startover:
         Prompt(P0_stage);
         if (TimeLeft == 120) {
           /*
-           * Drop the temperature when whirlpool is almost ready. If we
-           * are lucky the heater element will cool down so the next
-           * cooling stage will not wast too much energy.
-           */
+             Drop the temperature when whirlpool is almost ready. If we
+             are lucky the heater element will cool down so the next
+             cooling stage will not wast too much energy.
+          */
           if (CurrentState == StageWhirlpool9)
             Setpoint = 88.0;
           else if (CurrentState == StageWhirlpool7)
@@ -1386,8 +1407,8 @@ startover:
 
       case StagePrepare:
         /*
-         * Heat Mash water to 10 degrees below Mash-in
-         */
+           Heat Mash water to 10 degrees below Mash-in
+        */
         Prompt(P0_prepare);
 #if USE_HLT == true
         DisplayValues((Temp_MLT < Setpoint), false, Temp_HLT != 0.0, HLT_SetPoint);
@@ -1403,8 +1424,8 @@ startover:
 
 #if USE_HLT == true
         /*
-         * Heat Sparge water if set
-         */
+           Heat Sparge water if set
+        */
         if (! HLT_SetPoint) {      // If HLT is off, skip heatup.
           NewState = StageDelayStart;
           break;
