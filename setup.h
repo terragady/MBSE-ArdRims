@@ -12,30 +12,36 @@ void displayYesNo(int);
 
 void editByte(const char *label, int address, int max, int min, void (*displayFunc)(int)) {
   byte _editingValue = er_byte(address);
-  boolean editLoop = true;
-
   _displayFunc = displayFunc;
+  boolean editLoop = true;
+  int labelLength = strlen(label);
+  int offset = 0;
+
+  if (labelLength < 16) {
+    offset = 1;
+  }
+
+  lcd.setCursor(0, 2);
   Prompt(P2_clear);
   Prompt(P3_QQxO);
-
-  lcd.setCursor(1, 2);
+  lcd.setCursor(offset, 2);
   lcd.print(label);
 
   while (editLoop) {
 
     ReadButton(Direction, Timer);
-    lcd.setCursor(13, 2);
+    lcd.setCursor((labelLength+1+offset), 2);
     (*_displayFunc)(_editingValue);
     Set(_editingValue, max, min, 1, Timer, Direction);
 
-#if USE_HLT == true
-    if (address == EM_TempHLT) {
-      if ((Direction == DirectionDown) && (_editingValue < 75))
-        _editingValue = 0;
-      if ((Direction == DirectionUp) && (_editingValue == 1))
-        _editingValue = 75;
-    }
-#endif
+    #if USE_HLT == true
+      if (address == EM_TempHLT) {
+        if ((Direction == DirectionDown) && (_editingValue < 75))
+          _editingValue = 0;
+        if ((Direction == DirectionUp) && (_editingValue == 1))
+          _editingValue = 75;
+      }
+    #endif
 
     if (btn_Press(ButtonEnterPin, 50)) {
       editLoop = false;
@@ -173,7 +179,8 @@ void displayKi(int data) {
 void displayPercentage(int data) {
   float fvalue = (float)data;
 
-  FormatNumber(fvalue, 0);
+  //FormatNumber(fvalue, 0);
+  lcd.print(" ");
   lcd.print(fvalue, 0);
   lcd.print(F("%"));
 }
@@ -191,7 +198,8 @@ void displayTempShift50Divide10(int data) {
 void displaySimpleTemperature(int data) {
   float fvalue = (float)data;
 
-  FormatNumber(fvalue, 0);
+  //FormatNumber(fvalue, 0);
+  //lcd.print(" ");
   lcd.print(fvalue, 0);
   lcd.write((byte)0);
 }
@@ -200,7 +208,8 @@ void displaySimpleTemperature(int data) {
 void displayTime(int data) {
   float fvalue = (float)data;
 
-  FormatNumber(fvalue, 1);
+  //FormatNumber(fvalue, 1);
+  //lcd.print(" ");
   lcd.print(fvalue, 0);
   lcd.print(F("m"));
 }
@@ -211,9 +220,9 @@ void displayTimeOff(int data) {
     displayTime(data);
   else
 #if langNL == true
-    lcd.print(F("   Uit"));
+    lcd.print(F(" UIT"));
 #else
-    lcd.print(F("   Off"));
+    lcd.print(F(" Off"));
 #endif
 }
 
@@ -228,7 +237,7 @@ void displayNumber(int data) {
 
 void displayOnOff(int value) {
 #if langNL == true
-  value ? lcd.print(F(" Aan")) : lcd.print(F(" Uit"));
+  value ? lcd.print(F("AAN")) : lcd.print(F("UIT"));
 #else
   value ? lcd.print(F(" On ")) : lcd.print(F(" Off"));
 #endif
@@ -237,9 +246,9 @@ void displayOnOff(int value) {
 
 void displayYesNo(int value) {
 #if langNL == true
-  value ? lcd.print(F(" Ja ")) : lcd.print(F(" Nee"));
+  value ? lcd.print(F("JA ")) : lcd.print(F("NEE"));
 #else
-  value ? lcd.print(F(" Yes")) : lcd.print(F(" No "));
+  value ? lcd.print(F("Yes")) : lcd.print(F("No "));
 #endif
 }
 
@@ -263,19 +272,19 @@ void set_PID(void) {
 void set_Unit(void) {
   //        23456789012
 #if langNL == true
-  editByte("Kook temp. ", EM_BoilTemperature, 105, 60, & displaySimpleTemperature);
+  editByte("Kook Temperatuur", EM_BoilTemperature, 105, 60, & displaySimpleTemperature);
   editByte("Pomp Cyclus", EM_PumpCycle, 15, 5, & displayTime);
-  editByte("Pomp Rust  ", EM_PumpRest, 5, 0, & displayTime);
-  editByte("Pmp PreMash", EM_PumpPreMash, 1, 0, & displayOnOff);
-  editByte("Pmp on Mash", EM_PumpOnMash, 1, 0, & displayOnOff);
-  editByte("Pmp MashOut", EM_PumpMashout, 1, 0, & displayOnOff);
-  editByte("Pmp on Boil", EM_PumpOnBoil, 1, 0, & displayOnOff);
-  editByte("Pomp Stop  ", EM_PumpMaxTemp, 105, 80, & displaySimpleTemperature);
-  editByte("PID Pijp   ", EM_PIDPipe, 1, 0, & displayYesNo);
-  editByte("Skip Add   ", EM_SkipAdd, 1, 0, & displayYesNo);
-  editByte("Skip Remove", EM_SkipRemove, 1, 0, & displayYesNo);
-  editByte("Skip Jodium", EM_SkipIodine, 1, 0, & displayYesNo);
-  editByte("Jodium tijd", EM_IodoneTime, 90, 0, & displayTime);
+  editByte("Pomp Rust", EM_PumpRest, 5, 0, & displayTime);
+  editByte("Pomp Inmaischen", EM_PumpPreMash, 1, 0, & displayOnOff);
+  editByte("Pomp Maischen", EM_PumpOnMash, 1, 0, & displayOnOff);
+  editByte("Pomp Uitmaischen", EM_PumpMashout, 1, 0, & displayOnOff);
+  editByte("Pomp Koken", EM_PumpOnBoil, 1, 0, & displayOnOff);
+  editByte("Pomp Stop", EM_PumpMaxTemp, 105, 80, & displaySimpleTemperature);
+  editByte("PID Pijp", EM_PIDPipe, 1, 0, & displayYesNo);
+  editByte("Skip Toevoegen", EM_SkipAdd, 1, 0, & displayYesNo);
+  editByte("Skip Verwijderen", EM_SkipRemove, 1, 0, & displayYesNo);
+  editByte("Skip Jodiumtest", EM_SkipIodine, 1, 0, & displayYesNo);
+  editByte("Jodium Tijd", EM_IodoneTime, 90, 0, & displayTime);
 #else
   editByte("Boil temp. ", EM_BoilTemperature, 105, 90, & displaySimpleTemperature);
   editByte("Pump Cycle ", EM_PumpCycle, 15, 5, & displayTime);
@@ -447,7 +456,7 @@ void Recipe(byte numRecipe, byte Type) {
 void RecipeSelect(byte & numRecipe, byte RecipeUp, byte RecipeDown) {
   Recipe(numRecipe, 0);
   ReadButton(Direction, Timer);
-  Set(numRecipe, RecipeUp, RecipeDown, 1, Timer, Direction); 
+  Set(numRecipe, RecipeUp, RecipeDown, 1, Timer, Direction);
 }
 
 
@@ -510,7 +519,7 @@ void RecipeLoad(void) {
         Da++;
       }
       ew_byte(EM_ActiveRecipe, numRecipe);
-      
+
 #if langNL == true
       RecipeDoing("  Recept laden...");
 #else
@@ -706,7 +715,7 @@ void RecipeDelete(void) {
     }
     if (btn_Press(ButtonEnterPin, 50)) { // Ok
 #if langNL == true
-      if (RecipePrompt("Wissem recept", numRecipe)) {
+      if (RecipePrompt("Wissen recept", numRecipe)) {
 #else
       if (RecipePrompt(" Erase recipe", numRecipe)) {
 #endif
@@ -897,7 +906,7 @@ void setup_mode() {
 
       case (3):
 #if langNL == true
-        lcd.print(F("  Kook programma  "));
+        lcd.print(F("  Kookprogramma   "));
 #else
         lcd.print(F(" Boil Automation  "));
 #endif
