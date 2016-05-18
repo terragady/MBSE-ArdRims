@@ -85,6 +85,7 @@ void editMash(byte index, float max, float min, boolean allowskip) {
   byte    tsave    = er_byte(EM_StageTime(index));
   int     time     = tsave;
 
+  lcd.setCursor(0, 2);
   Prompt(P2_clear);
   lcd.setCursor(1, 2);
   lcd.print(stageName[index]);
@@ -132,11 +133,15 @@ void editMash(byte index, float max, float min, boolean allowskip) {
     } else {
       editLoop = true;    // Enables step, edit steptime
     }
+
     while (editLoop) {
 
       ReadButton(Direction, Timer);
       lcd.setCursor(13, 2);
+      lcd.print("      ");
+      lcd.setCursor(13, 2);
       displayTime(time);
+      Serial.println(time);
       Set(time, 140, 1, 1, Timer, Direction);
 
       if (btn_Press(ButtonEnterPin, 50)) {
@@ -220,9 +225,9 @@ void displayTimeOff(int data) {
     displayTime(data);
   else
 #if langNL == true
-    lcd.print(F(" UIT"));
+    lcd.print(F("UIT"));
 #else
-    lcd.print(F(" Off"));
+    lcd.print(F("OFF"));
 #endif
 }
 
@@ -230,7 +235,7 @@ void displayTimeOff(int data) {
 void displayNumber(int data) {
   float fvalue = (float)data;
 
-  FormatNumber(fvalue, 1);
+  //FormatNumber(fvalue, 1);
   lcd.print(fvalue, 0);
 }
 
@@ -239,7 +244,7 @@ void displayOnOff(int value) {
 #if langNL == true
   value ? lcd.print(F("AAN")) : lcd.print(F("UIT"));
 #else
-  value ? lcd.print(F(" On ")) : lcd.print(F(" Off"));
+  value ? lcd.print(F("ON")) : lcd.print(F("OFF"));
 #endif
 }
 
@@ -248,7 +253,7 @@ void displayYesNo(int value) {
 #if langNL == true
   value ? lcd.print(F("JA ")) : lcd.print(F("NEE"));
 #else
-  value ? lcd.print(F("Yes")) : lcd.print(F("No "));
+  value ? lcd.print(F("YES")) : lcd.print(F("NO "));
 #endif
 }
 
@@ -272,33 +277,33 @@ void set_PID(void) {
 void set_Unit(void) {
   //        23456789012
 #if langNL == true
-  editByte("Kook Temperatuur", EM_BoilTemperature, 105, 60, & displaySimpleTemperature);
-  editByte("Pomp Cyclus", EM_PumpCycle, 15, 5, & displayTime);
-  editByte("Pomp Rust", EM_PumpRest, 5, 0, & displayTime);
-  editByte("Pomp Inmaischen", EM_PumpPreMash, 1, 0, & displayOnOff);
-  editByte("Pomp Maischen", EM_PumpOnMash, 1, 0, & displayOnOff);
-  editByte("Pomp Uitmaischen", EM_PumpMashout, 1, 0, & displayOnOff);
-  editByte("Pomp Koken", EM_PumpOnBoil, 1, 0, & displayOnOff);
-  editByte("Pomp Stop", EM_PumpMaxTemp, 105, 80, & displaySimpleTemperature);
-  editByte("PID Pijp", EM_PIDPipe, 1, 0, & displayYesNo);
-  editByte("Skip Toevoegen", EM_SkipAdd, 1, 0, & displayYesNo);
-  editByte("Skip Verwijderen", EM_SkipRemove, 1, 0, & displayYesNo);
-  editByte("Skip Jodiumtest", EM_SkipIodine, 1, 0, & displayYesNo);
-  editByte("Jodium Tijd", EM_IodoneTime, 90, 0, & displayTime);
+  editByte("Kook Temperatuur" , EM_BoilTemperature, 105, 60, & displaySimpleTemperature);
+  editByte("Pomp Cyclus"      , EM_PumpCycle, 15, 5, & displayTime);
+  editByte("Pomp Rust"        , EM_PumpRest, 5, 0, & displayTime);
+  editByte("Pomp Inmaischen"  , EM_PumpPreMash, 1, 0, & displayOnOff);
+  editByte("Pomp Maischen"    , EM_PumpOnMash, 1, 0, & displayOnOff);
+  editByte("Pomp Uitmaischen" , EM_PumpMashout, 1, 0, & displayOnOff);
+  editByte("Pomp Koken"       , EM_PumpOnBoil, 1, 0, & displayOnOff);
+  editByte("Pomp Stop"        , EM_PumpMaxTemp, 105, 80, & displaySimpleTemperature);
+  editByte("PID Pijp"         , EM_PIDPipe, 1, 0, & displayYesNo);
+  editByte("Skip Toevoegen"   , EM_SkipAdd, 1, 0, & displayYesNo);
+  editByte("Skip Verwijderen" , EM_SkipRemove, 1, 0, & displayYesNo);
+  editByte("Skip Jodiumtest"  , EM_SkipIodine, 1, 0, & displayYesNo);
+  editByte("Jodium Tijd"      , EM_IodoneTime, 90, 0, & displayTime);
 #else
-  editByte("Boil temp. ", EM_BoilTemperature, 105, 90, & displaySimpleTemperature);
-  editByte("Pump Cycle ", EM_PumpCycle, 15, 5, & displayTime);
-  editByte("Pump Rest  ", EM_PumpRest, 5, 0, & displayTime);
-  editByte("Pmp PreMash", EM_PumpPreMash, 1, 0, & displayOnOff);
-  editByte("Pmp on Mash", EM_PumpOnMash, 1, 0, & displayOnOff);
-  editByte("Pmp MashOut", EM_PumpMashout, 1, 0, & displayOnOff);
-  editByte("Pmp on Boil", EM_PumpOnBoil, 1, 0, & displayOnOff);
-  editByte("Pomp Stop  ", EM_PumpMaxTemp, 105, 80, & displaySimpleTemperature);
-  editByte("PID Pipe   ", EM_PIDPipe, 1, 0, & displayYesNo);
-  editByte("Skip Add   ", EM_SkipAdd, 1, 0, & displayYesNo);
-  editByte("Skip Remove", EM_SkipRemove, 1, 0, & displayYesNo);
-  editByte("Skip Iodine", EM_SkipIodine, 1, 0, & displayYesNo);
-  editByte("IodineTime ", EM_IodoneTime, 90, 0, & displayTime);
+  editByte("Boil Temperature" , EM_BoilTemperature, 105, 90, & displaySimpleTemperature);
+  editByte("Pump Cycle"       , EM_PumpCycle, 15, 5, & displayTime);
+  editByte("Pump Rest"        , EM_PumpRest, 5, 0, & displayTime);
+  editByte("Pump Pre Mash"    , EM_PumpPreMash, 1, 0, & displayOnOff);
+  editByte("Pump On Mash"     , EM_PumpOnMash, 1, 0, & displayOnOff);
+  editByte("Pump Mash Out"    , EM_PumpMashout, 1, 0, & displayOnOff);
+  editByte("Pump on Boil"     , EM_PumpOnBoil, 1, 0, & displayOnOff);
+  editByte("Pump Stop"        , EM_PumpMaxTemp, 105, 80, & displaySimpleTemperature);
+  editByte("PID Pipe"         , EM_PIDPipe, 1, 0, & displayYesNo);
+  editByte("Skip Add"         , EM_SkipAdd, 1, 0, & displayYesNo);
+  editByte("Skip Remove"      , EM_SkipRemove, 1, 0, & displayYesNo);
+  editByte("Skip Iodine"      , EM_SkipIodine, 1, 0, & displayYesNo);
+  editByte("Iodine Time"      , EM_IodoneTime, 90, 0, & displayTime);
 #endif
 }
 
@@ -327,13 +332,13 @@ void set_Auto_Boil(void) {
 #endif
 
   /*
-   * Set Boiltime and hop additions.
+     * Set Boiltime and hop additions.
    */
   editByte(stageName[8], EM_BoilTime, 240, 10, & displayTime);
 #if langNL == true
-  editByte("Hopgiften ", EM_NumberOfHops, 10, 0, & displayNumber);
+  editByte(" Aantal Hopgiften", EM_NumberOfHops, 10, 0, & displayNumber);
 #else
-  editByte("Hop add's ", EM_NumberOfHops, 10, 0, & displayNumber);
+  editByte(" Nr. Of Hops adds", EM_NumberOfHops, 10, 0, & displayNumber);
 #endif
 
   if (er_byte(EM_NumberOfHops)) {
@@ -356,15 +361,15 @@ void set_Auto_Boil(void) {
 
   // 4 Whirlpool settings
 #if langNL == true
-  editByte("Whirlp. 93+ ", EM_Whirlpool_9 , WhirlpoolMaxtime, 0, & displayTimeOff);
-  editByte("Whirlp.71-77", EM_Whirlpool_7 , WhirlpoolMaxtime, 0, & displayTimeOff);
-  editByte("Whirlp.60-66", EM_Whirlpool_6 , WhirlpoolMaxtime, 0, & displayTimeOff);
-  editByte("Whirlp. koud", EM_Whirlpool_2 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool 93+", EM_Whirlpool_9 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool 71-77", EM_Whirlpool_7 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool 60-66", EM_Whirlpool_6 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool Koud", EM_Whirlpool_2 , WhirlpoolMaxtime, 0, & displayTimeOff);
 #else
-  editByte("Whirlp. 93+ ", EM_Whirlpool_9 , WhirlpoolMaxtime, 0, & displayTimeOff);
-  editByte("Whirlp.71-77", EM_Whirlpool_7 , WhirlpoolMaxtime, 0, & displayTimeOff);
-  editByte("Whirlp.60-66", EM_Whirlpool_6 , WhirlpoolMaxtime, 0, & displayTimeOff);
-  editByte("Whirlp. cold", EM_Whirlpool_2 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool 93+", EM_Whirlpool_9 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool 71-77", EM_Whirlpool_7 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool 60-66", EM_Whirlpool_6 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool Cold", EM_Whirlpool_2 , WhirlpoolMaxtime, 0, & displayTimeOff);
 #endif
 }
 
