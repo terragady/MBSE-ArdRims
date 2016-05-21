@@ -58,11 +58,12 @@
 #define  X1Y1_temp       502
 #define  X11Y1_setpoint  503
 #define  X1Y2_pwm        504
-#define  X11Y2_timer     505
+#define  X1Y2_blank      505
+#define  X11Y2_timer     506
 #if USE_HLT == true
-#define  X6Y2_temp       506
-#define  X1Y2_temp       507
-#define  X11Y2_setpoint  508
+#define  X6Y2_temp       507
+#define  X1Y2_temp       508
+#define  X11Y2_setpoint  509
 #endif
 
 
@@ -473,6 +474,11 @@ void Prompt(int Pmpt) {
       FormatNumber(Temp, -1);
       lcd.print(Temp, 0);      //Display output%
       lcd.print(F("% "));
+      return;
+
+    case X1Y2_blank:
+      lcd.setCursor(1, 2);
+      LCDSpace(9);
       return;
 
     case X11Y2_timer:

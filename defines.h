@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define  VERSION        "0.0.8"
+#define  VERSION        "0.0.9"
 
 /*
    EEPROM MAP

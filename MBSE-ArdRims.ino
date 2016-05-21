@@ -435,6 +435,12 @@ void LoadPIDsettings() {
   WindowSize = er_byte(EM_WindowSize);
   myPID.SetSampleTime(er_byte(EM_SampleTime) * 250);
   LogFactor = er_byte(EM_LogFactor);
+  /*
+     Initialize the PID
+  */
+  Output = 0.0;   // Reset internal Iterm.
+  myPID.SetMode(MANUAL);
+  myPID.SetMode(AUTOMATIC);
 }
 
 
@@ -448,35 +454,18 @@ void PID_Heat(boolean autoMode) {
   double RealPower;
 
   TimerRun();
-
-#if DebugPID == true
-  static unsigned long LastTimeSpent;
-  if (TimeSpent != LastTimeSpent) {
-    DebugTimeSerial();
-    Serial.print(F("Mash Temp: "));
-    if (Temp_MLT <  10 && Temp_MLT >= 0) Serial.print(F("  "));
-    if (Temp_MLT < 100 && Temp_MLT >= 10) Serial.print(F(" "));
-    Serial.print(Temp_MLT);
-    Serial.print(F(" Setpoint: "));
-    if (Setpoint <  10 && Setpoint >= 0) Serial.print(F("  "));
-    if (Setpoint < 100 && Setpoint >= 10) Serial.print(F(" "));
-    Serial.print(Setpoint);
-  }
-#endif
-
   if (autoMode)
     myPID.Compute();
 
   /*
      Apply logarithmic factor to the output.
   */
-  Output = int(Output);
-  RealPower = Output;
+  RealPower = int(Output);
   if (RealPower && LogFactor) {
     /*
        Make sure that even 1% Output results in enough power to actually heat the water.
     */
-    RealPower += ((255 - Output) / (21 - LogFactor));
+    RealPower += ((255 - int(Output)) / (21 - LogFactor));
   }
 
   if (gCurrentTimeInMS - w_StartTime > (unsigned int) WindowSize * 250) {
@@ -485,8 +474,19 @@ void PID_Heat(boolean autoMode) {
   ((RealPower / 255) * ((unsigned int)WindowSize * 250) > gCurrentTimeInMS - w_StartTime) ? bk_heat_on() : bk_heat_off();
 
 #if DebugPID == true
+  static unsigned long LastTimeSpent;
   if (TimeSpent != LastTimeSpent) {
     LastTimeSpent = TimeSpent;
+    DebugTimeSerial();
+    (autoMode) ? Serial.print(F("AUTOMATIC ")) : Serial.print(F("MANUAL    "));
+    Serial.print(F("Mash Temp: "));
+    if (Temp_MLT <  10 && Temp_MLT >= 0) Serial.print(F("  "));
+    if (Temp_MLT < 100 && Temp_MLT >= 10) Serial.print(F(" "));
+    Serial.print(Temp_MLT);
+    Serial.print(F(" Setpoint: "));
+    if (Setpoint <  10 && Setpoint >= 0) Serial.print(F("  "));
+    if (Setpoint < 100 && Setpoint >= 10) Serial.print(F(" "));
+    Serial.print(Setpoint);
     Serial.print(F(" Output: "));
     if (Output <  10 && Output >= 0) Serial.print(F("  "));
     if (Output < 100 && Output >= 10) Serial.print(F(" "));
@@ -602,10 +602,13 @@ void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) 
 #if USE_HLT == true
   if (PWM && HLTtemp)
     // Dual show Mash PWM and HLT temperature.
-    (TimeSpent % 5) ? Prompt(X1Y2_pwm) : Prompt(X1Y2_temp);
-  else if (PWM)
-    Prompt(X1Y2_pwm);
-  else if (HLTset)
+    ((TimeSpent % 5) && ! pumpRest) ? Prompt(X1Y2_pwm) : Prompt(X1Y2_temp);
+  else if (PWM) {
+    if (pumpRest)
+      Prompt(X1Y2_blank);
+    else
+      Prompt(X1Y2_pwm);
+  } else if (HLTset)
     Prompt(X1Y2_temp);
   if (Timer && HLTset)
     (TimeSpent % 5) ? Prompt(X11Y2_timer) : Prompt(X11Y2_setpoint);
@@ -614,8 +617,12 @@ void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) 
   else if (HLTset)
     Prompt(X11Y2_setpoint);
 #else
-  if (PWM)
-    Prompt(X1Y2_pwm);
+  if (PWM) {
+    if (pumpRest)
+      Prompt(X1Y2_blank);
+    else
+      Prompt(X1Y2_pwm);
+  }
   if (Timer)
     Prompt(X11Y2_timer);
 #endif
@@ -937,6 +944,7 @@ startover:
           stageTemp = Setpoint = er_byte(EM_BoilTemperature);
           stageTime = er_byte(EM_BoilTime);
           Boil_output = er_byte(EM_BoilHeat);
+          pumpRest = false;
 
           hopAdd = 0;
           ew_byte(EM_HopAddition, hopAdd);
@@ -1077,45 +1085,12 @@ startover:
           TimerSet(240 * 60);      // Just make sure the timer runs.
 
         } else if (MashState == MashHeating) {
-          /*
-             Only in Mash-in we set the target temperature immediatly.
-          */
-          if (CurrentState == StageMashIn) {
-            Setpoint = _EM_StageTemp;
 #if DebugProcess == true
-            Debugger = true;
+          Debugger = true;
 #endif
-          } else {
-            /*
-               If the current temperature is above the minute step,
-               skip to the next minute step.
-            */
-            while ((Temp_MLT > (Setpoint + 1.0)) && (Setpoint <= (_EM_StageTemp - 1)))
-              Setpoint += 1.0;
-            /*
-               Happens if strike temperature is higher
-               then the first normal mash step.
-            */
-            if (Setpoint > _EM_StageTemp)
-              Setpoint = _EM_StageTemp;
-            /*
-               Each minute increase the Setpoint with 1 degree
-            */
-            if (newMinute) {
-#if DebugProcess == true
-              Debugger = true;
-#endif
-              if (Setpoint <= (_EM_StageTemp - 1))
-                Setpoint += 1.0;
-            }
-          }
-          stageTemp = Setpoint;
+          stageTemp = Setpoint = _EM_StageTemp;
           PID_Heat(true);
-          /*
-             Have we set the final Mashstep Setpoint temperature?
-          */
-          if (Setpoint >= _EM_StageTemp)
-            MashState = MashWaitTemp;
+          MashState = MashWaitTemp;
 
         } else if (MashState == MashWaitTemp) {
           /*
