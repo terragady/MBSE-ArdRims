@@ -1305,9 +1305,9 @@ startover:
           CoolBeep = true;
           Buzzer(4, 100);
         }
-        if (Temp_MLT < stageTemp)
+        if (Temp_MLT <= stageTemp)
           Buzzer(3, 250);
-        if ((Temp_MLT < stageTemp) || (btn_Press(ButtonEnterPin, 2500))) {
+        if ((Temp_MLT <= stageTemp) || (btn_Press(ButtonEnterPin, 2500))) {
           if (_EM_Whirlpool_7 && ! WP7Done) {
             NewState = StageWhirlpool7;
           } else if (_EM_Whirlpool_6 && ! WP6Done) {
