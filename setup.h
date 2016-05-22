@@ -99,7 +99,7 @@ void editMash(byte index, float max, float min, boolean allowskip) {
     while (editLoop) {
       lcd.setCursor(13, 2);
 #if langNL == true
-      (tsave) ? lcd.print(F("   Run")) : lcd.print(F("  Skip"));
+      (tsave) ? lcd.print(F("    Ja")) : lcd.print(F("   Nee"));
 #else
       (tsave) ? lcd.print(F("   Run")) : lcd.print(F("  Skip"));
 #endif
@@ -259,17 +259,30 @@ void displayYesNo(int value) {
 
 
 void set_PID(void) {
-  //        234567890123
-  editByte("Constant kP ", EM_PID_kP, 200, 100, & displayOffset100);
-  editByte("Constant kI ", EM_PID_kI, 250,   0, & displayKi);
-  editByte("Constant kD ", EM_PID_kD, 200, 100, & displayOffset100);
-  editByte("SampleTime  ", EM_SampleTime, 3500 / 250, 1000 / 250, & displayMultiply250);
-  editByte("WindowSet ms", EM_WindowSize, 7500 / 250, 3000 / 250, & displayMultiply250);
-  editByte("Log Factor  ", EM_LogFactor, 20, 0, & displayNumber);
-  editByte("Temp Offset ", EM_TempOffset, 100, 0, & displayTempShift50Divide10);
-  editByte("Heat in Boil", EM_BoilHeat, 100, 20, & displayPercentage);
-#if USE_HLT == true
-  editByte("HLT temp.   ", EM_TempHLT, 95, 0, & displaySimpleTemperature);
+#if langNL == true
+    editByte("Constant kP ", EM_PID_kP, 200, 100, & displayOffset100);
+    editByte("Constant kI ", EM_PID_kI, 250,   0, & displayKi);
+    editByte("Constant kD ", EM_PID_kD, 200, 100, & displayOffset100);
+    editByte("SampleTime  ", EM_SampleTime, 3500 / 250, 1000 / 250, & displayMultiply250);
+    editByte("WindowSet ms", EM_WindowSize, 7500 / 250, 3000 / 250, & displayMultiply250);
+    editByte("Log Factor  ", EM_LogFactor, 20, 0, & displayNumber);
+    editByte("Temp Offset ", EM_TempOffset, 100, 0, & displayTempShift50Divide10);
+    editByte("Heat in Boil", EM_BoilHeat, 100, 20, & displayPercentage);
+  #if USE_HLT == true
+    editByte("HLT temp.   ", EM_TempHLT, 95, 0, & displaySimpleTemperature);
+  #endif
+#else
+    editByte("Constant kP ", EM_PID_kP, 200, 100, & displayOffset100);
+    editByte("Constant kI ", EM_PID_kI, 250,   0, & displayKi);
+    editByte("Constant kD ", EM_PID_kD, 200, 100, & displayOffset100);
+    editByte("SampleTime  ", EM_SampleTime, 3500 / 250, 1000 / 250, & displayMultiply250);
+    editByte("WindowSet ms", EM_WindowSize, 7500 / 250, 3000 / 250, & displayMultiply250);
+    editByte("Log Factor  ", EM_LogFactor, 20, 0, & displayNumber);
+    editByte("Temp Offset ", EM_TempOffset, 100, 0, & displayTempShift50Divide10);
+    editByte("Heat in Boil", EM_BoilHeat, 100, 20, & displayPercentage);
+  #if USE_HLT == true
+    editByte("HLT temp.   ", EM_TempHLT, 95, 0, & displaySimpleTemperature);
+  #endif
 #endif
 }
 
@@ -328,7 +341,7 @@ void set_Auto_Boil(void) {
 #if langNL == true
   char  *Hopstr = (char *)"Hopgift .. ";
 #else
-  char  *Hopstr = (char *)"Hop add .. ";
+  char  *Hopstr = (char *)"Hop Add .. ";
 #endif
 
   /*
@@ -353,9 +366,9 @@ void set_Auto_Boil(void) {
   Prompt(P2_clear);
   lcd.setCursor(1, 2);
 #if langNL == true
-  lcd.print(F("Koel temp."));
+  lcd.print(F("Koel Temp."));
 #else
-  lcd.print(F("Cool temp."));
+  lcd.print(F("Cool Temp."));
 #endif
   editTemp(EM_CoolingTemp, 30.0, 10.0);
 
@@ -526,9 +539,9 @@ void RecipeLoad(void) {
       ew_byte(EM_ActiveRecipe, numRecipe);
 
 #if langNL == true
-      RecipeDoing("  Recept laden...");
+      RecipeDoing("  Recept Laden...");
 #else
-      RecipeDoing("   Recipe load...");
+      RecipeDoing("   Recipe Load...");
 #endif
       return;
     }
@@ -559,9 +572,9 @@ void RecipeSave(void) {
     }
     if (btn_Press(ButtonEnterPin, 50)) { // Ok
 #if langNL == true
-      if (RecipePrompt("Opslaan recept", numRecipe)) {
+      if (RecipePrompt("Opslaan Recept", numRecipe)) {
 #else
-      if (RecipePrompt("  Save recipe", numRecipe)) {
+      if (RecipePrompt("  Save Recipe", numRecipe)) {
 #endif
         return;
       }
@@ -720,9 +733,9 @@ void RecipeDelete(void) {
     }
     if (btn_Press(ButtonEnterPin, 50)) { // Ok
 #if langNL == true
-      if (RecipePrompt("Wissen recept", numRecipe)) {
+      if (RecipePrompt("Wissen Recept", numRecipe)) {
 #else
-      if (RecipePrompt(" Erase recipe", numRecipe)) {
+      if (RecipePrompt(" Erase Recipe", numRecipe)) {
 #endif
         return;
       }
@@ -759,9 +772,9 @@ void InitRecipes(void) {
   }
 
 #if langNL == true
-  RecipeDoing("   EEPROM wissen");
+  RecipeDoing("   EEPROM Wissen");
 #else
-  RecipeDoing("   EEPROM format");
+  RecipeDoing("   EEPROM Format");
 #endif
 }
 
@@ -777,7 +790,7 @@ void set_Recipes() {
     switch (recipeMenu) {
       case 0:
 #if langNL == true
-        lcd.print(F("   Recept laden   "));
+        lcd.print(F("   Recept Laden   "));
 #else
         lcd.print(F("   Recept Load    "));
 #endif
@@ -790,7 +803,7 @@ void set_Recipes() {
 
       case 1:
 #if langNL == true
-        lcd.print(F("  Recept opslaan  "));
+        lcd.print(F("  Recept Opslaan  "));
 #else
         lcd.print(F("   Recipe Save    "));
 #endif
@@ -805,9 +818,9 @@ void set_Recipes() {
 
       case 2:
 #if langNL == true
-        lcd.print(F("Recept opslaan als"));
+        lcd.print(F("Recept Opslaan als"));
 #else
-        lcd.print(F("  Recipe Save As  "));
+        lcd.print(F("  Recipe Save as  "));
 #endif
         Prompt(P3_SGQO);
         if (btn_Press(ButtonDownPin, 50))
@@ -820,9 +833,9 @@ void set_Recipes() {
 
       case 3:
 #if langNL == true
-        lcd.print(F("  Recept wissen   "));
+        lcd.print(F("  Recept Wissen   "));
 #else
-        lcd.print(F("   Recipe erase   "));
+        lcd.print(F("   Recipe Erase   "));
 #endif
         Prompt(P3_SGQO);
         if (btn_Press(ButtonDownPin, 50))
@@ -868,9 +881,9 @@ void setup_mode() {
 
       case (0):
 #if langNL == true
-        lcd.print(F(" PID instellingen "));
+        lcd.print(F(" PID Instellingen "));
 #else
-        lcd.print(F("  PID parameters  "));
+        lcd.print(F("  PID Parameters  "));
 #endif
         Prompt(P3_xGQO);
         if (btn_Press(ButtonDownPin, 50))
@@ -883,7 +896,7 @@ void setup_mode() {
 #if langNL == true
         lcd.print(F("Unit Instellingen "));
 #else
-        lcd.print(F(" Unit  Parameters "));
+        lcd.print(F(" Unit Parameters  "));
 #endif
         Prompt(P3_SGQO);
         if (btn_Press(ButtonUpPin, 50))
@@ -896,7 +909,7 @@ void setup_mode() {
 
       case (2):
 #if langNL == true
-        lcd.print(F(" Maisch programma "));
+        lcd.print(F(" Maisch Programma "));
 #else
         lcd.print(F(" Mash Automation  "));
 #endif
@@ -911,7 +924,7 @@ void setup_mode() {
 
       case (3):
 #if langNL == true
-        lcd.print(F("  Kookprogramma   "));
+        lcd.print(F("  Kook Programma  "));
 #else
         lcd.print(F(" Boil Automation  "));
 #endif
@@ -926,7 +939,7 @@ void setup_mode() {
 
       case (4):
 #if langNL == true
-        lcd.print(F(" Recepten beheer  "));
+        lcd.print(F(" Recepten Beheer  "));
 #else
         lcd.print(F("Recipe Management "));
 #endif
