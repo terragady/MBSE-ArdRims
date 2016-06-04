@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define  VERSION        "0.0.9"
+#define  VERSION        "0.1.0"
 
 /*
    EEPROM MAP
@@ -104,12 +104,14 @@
 
     RECIPE
 */
+#if USE_ESP8266 == false
 #define  EM_RecipeIndexBase  90   // Index 1-10
 #define  EM_RecipeIndex(i)   ((EM_RecipeIndexBase)+(i))
 #define  EM_RecipeDataBase  100   // Recipe data
 #define  EM_RecipeData(i)    ((EM_RecipeDataBase)+(i)*52)
 #define  EM_RecipeNameBase  620   // Recipe name
 #define  EM_RecipeName(i)    ((EM_RecipeNameBase)+(i)*10)
+#endif
 /*
 	 90 -  99 Index 1-10
 	100 - 151 Recipe Data  1
@@ -183,9 +185,8 @@
 
 // Internal Mash states
 #define MashNone              0
-#define MashHeating           1     // Mash heating
-#define MashWaitTemp          2     // Wait for target temperature
-#define MashRest              3     // Rest state
+#define MashWaitTemp          1     // Wait for target temperature
+#define MashRest              2     // Rest state
 
 #define WhirlpoolMaxtime    120     // Maximum 120 minutes
 

@@ -26,7 +26,9 @@
 #define  P2_clear        300
 #define  P2_malt_add     301
 #define  P2_malt_rem     302
+#if USE_ESP8266 == false
 #define  P2_norecipe     303
+#endif
 
 #define  P3_clear        400
 #define  P3_xMAS         401
@@ -294,6 +296,7 @@ void Prompt(int Pmpt) {
       lcd.print(F("   Remove Malt    "));
 #endif
       return;
+#if USE_ESP8266 == false
     case P2_norecipe:
 #if langNL == true
       lcd.print(F("  GEEN RECEPTEN!  "));
@@ -301,6 +304,7 @@ void Prompt(int Pmpt) {
       lcd.print(F("   NO  RECIPES!   "));
 #endif
       return;
+#endif
 
     case P3_clear:
       LCDSpace(20);

@@ -4,6 +4,7 @@
 
 unsigned long TimeLeft;
 unsigned long TimeSpent;
+unsigned long Steady;
 
 /*
  * Should be called as much as possible
@@ -14,6 +15,7 @@ void TimerRun() {
   if (_seconds != myTimer.readTimer()) {
     _seconds = myTimer.readTimer();
     TimeSpent++;
+    Steady++;
 
     if (TimeLeft) {
       TimeLeft--;
@@ -29,7 +31,7 @@ void TimerRun() {
 
 
 void TimerSet(unsigned long seconds) {
-  TimeSpent = 0;
+  Steady = TimeSpent = 0;
   TimeLeft = seconds;
 }
 

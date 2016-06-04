@@ -20,6 +20,7 @@
 #define FakeHeating     false       // For development only.
 #define USE_HLT         false       // A HLT shared with the MLT. (Not yet).
 #define Silent          false       // No beeps (during development).
+#define USE_ESP8266     false       // Add serial interface to ESP8266-12E DEVKIT   DO NOT USE !!! 
 
 // Serial debugging
 #define DebugPID        false
@@ -196,6 +197,7 @@ byte    hopAdd;
 byte    MashState;
 byte    LogFactor = 0;
 byte    pumpTime;
+
 
 double  Input;
 double  Output;
@@ -940,6 +942,7 @@ startover:
           break;
 
         case StageBoil:
+          TimerSet(240 * 60);      // Just make sure the timer runs.
           Output = 255;
           stageTemp = Setpoint = er_byte(EM_BoilTemperature);
           stageTime = er_byte(EM_BoilTime);
@@ -1081,13 +1084,7 @@ startover:
             NewState = CurrentState + 1;
             break;      // skip this step
           }
-          MashState = MashHeating;
           TimerSet(240 * 60);      // Just make sure the timer runs.
-
-        } else if (MashState == MashHeating) {
-#if DebugProcess == true
-          Debugger = true;
-#endif
           stageTemp = Setpoint = _EM_StageTemp;
           PID_Heat(true);
           MashState = MashWaitTemp;
@@ -1097,7 +1094,15 @@ startover:
              Final wait for the Mash step temperature
           */
           PID_Heat(true);
-          if (Temp_MLT >= stageTemp) {
+          if (Temp_MLT < stageTemp) {
+            // Reset Steady counter if temp not reached
+            Steady = 0;
+#if DebugProcess == true
+          } else if (newMinute) {
+            Debugger = true;
+#endif
+          }
+          if ((Temp_MLT >= stageTemp) && (Steady > 20)) {
             Buzzer (3, 250);
             MashState = MashRest;
             if (CurrentState == StageMashIn)
@@ -1177,6 +1182,8 @@ startover:
           Serial.print(_EM_StageTemp);
           Serial.print(F(" Timer: "));
           Serial.print(TimeLeft);
+          Serial.print(F(" Steady: "));
+          Serial.print(Steady);
           Serial.print(F(" DeltaTemp: "));
           Serial.print(DeltaTemp);
           Serial.print(F(" pumpTime: "));
@@ -1226,15 +1233,21 @@ startover:
         PID_Heat(false);         // No PID control during boil
 
         if (! tempBoilReached) {
+          if (Temp_MLT < stageTemp)
+            Steady = 0;
           Prompt(P0_stage);
           Prompt(P3_UDRx);
           ReadButton(Direction, Timer);
           Set(stageTemp, 105, 90, 1, Timer, Direction);
           Setpoint = stageTemp;
-          if ((Temp_MLT >= stageTemp) && ! tempBoilReached) {
+          if ((Temp_MLT >= stageTemp) && (Steady > 20)) {
             tempBoilReached = true;
             Buzzer(3, 250);
+            stageTime = er_byte(EM_BoilTime);
             TimerSet((stageTime * 60) + 60);   // +1 minute for flameout
+#if DebugProcess == true
+            Debugger = true;
+#endif
           }
         } else {
           // tempBoilReached
@@ -1263,19 +1276,39 @@ startover:
             lcd.setCursor(10, 0);
             lcd.print(F(" Hop: "));
             hopAdd++;
-            //            if (hopAdd < 10)
-            //              LCDSpace(1);
             lcd.print(hopAdd);
             delay(500);
             Buzzer(1, 750);
             ew_byte(EM_HopAddition, hopAdd);
             hopTime = er_byte(EM_TimeOfHop(hopAdd));
           }
-
           if (TimeLeft == 0) {
             (_EM_Whirlpool_9) ? NewState = StageWhirlpool9 : NewState = StageCooling;
           }
         }
+#if DebugProcess == true
+        if (newMinute)
+          Debugger = true;
+
+        if (Debugger == true) {
+          DebugTimeSerial();
+          Serial.print(F("Boiling Hop: "));
+          Serial.print(hopAdd);
+          Serial.print(F(" Temp: "));
+          Serial.print(Temp_MLT);
+          Serial.print(F(" Sp: "));
+          Serial.print(stageTemp);
+          Serial.print(F(" Timer: "));
+          Serial.print(TimeLeft);
+          Serial.print(F(" Steady: "));
+          Serial.print(Steady);
+          Serial.print(F(" Output: "));
+          Serial.print(Output);
+          Serial.print(F(" Boiltemp: "));
+          (tempBoilReached) ? Serial.println(F("true")) : Serial.println(F("false"));
+          Debugger = false;
+        }
+#endif
         if (btn_Press(ButtonStartPin, 50) && ! Pause()) {
           NewState = StageAborted;
         }
@@ -1507,10 +1540,12 @@ void setup() {
     EEPROM.write(EM_Signature + 1, 'B');
     EEPROM.write(EM_Version, 0);
     EEPROM.write(EM_Revision, 1);
+#if USE_ESP8266 == false
     // Erase all recipes because original ArdBir (and others)
     // are 2 bytes off.
     for (byte i = 0; i < 10; i++)
       EEPROM.write(EM_RecipeIndex(i), 0);
+#endif
   }
 }
 

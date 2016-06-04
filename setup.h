@@ -359,7 +359,7 @@ void set_Auto_Boil(void) {
 #endif
 }
 
-
+#if USE_ESP8266 == false
 
 byte SelectRecipe(byte & numRecipe, byte Direction) {
   if (er_byte(EM_RecipeIndex(numRecipe - 1)) == 0) {
@@ -840,6 +840,7 @@ void set_Recipes() {
   }
 }
 
+#endif
 
 
 void setup_mode() {
@@ -910,17 +911,28 @@ void setup_mode() {
           set_Auto_Boil();
         break;
 
+
       case (4):
+#if USE_ESP8266 == true
+#if langNL == true
+        lcd.print(F("  Netwerk beheer  "));
+#else
+        lcd.print(F("  Network setup   "));
+#endif
+#else
 #if langNL == true
         lcd.print(F(" Recepten beheer  "));
 #else
         lcd.print(F("Recipe Management "));
 #endif
+#endif
         Prompt(P3_SxQO);
         if (btn_Press(ButtonUpPin, 50))
           setupMenu = 3;
+#if USE_ESP8266 == false
         if (btn_Press(ButtonEnterPin, 50))
           set_Recipes();
+#endif
         break;
     }
     if (btn_Press(ButtonStartPin, 50)) {
