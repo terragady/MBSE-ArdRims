@@ -14,7 +14,7 @@
 // 4 Protoduino NANO by J. Klinge
 // 5 ArdRims NANO by C. Broek
 // 6 ArduinoBrewboard by J. Klinge ?? 2 soorten ??
-#define PCBType 5
+#define PCBType 6
 
 // should be false
 #define FakeHeating     false       // For development only.
@@ -23,10 +23,10 @@
 #define USE_ESP8266     false       // Add serial interface to ESP8266-12E DEVKIT   DO NOT USE !!! 
 
 // Serial debugging
-#define DebugPID        false
-#define DebugProcess    false
-#define DebugButton     false
-#define DebugReadWrite  false
+#define DebugPID        true
+#define DebugProcess    true
+#define DebugButton     true
+#define DebugReadWrite  true
 #define DebugErrors     true
 
 

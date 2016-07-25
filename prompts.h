@@ -70,14 +70,14 @@
 
 
 #if langNL == true
-const char *stageName[] = { "Maisch in ",
+const char *stageName[] = { "Maisch In ",
                             "Maisch #1 ",
                             "Maisch #2 ",
                             "Maisch #3 ",
                             "Maisch #4 ",
                             "Maisch #5 ",
                             "Maisch #6 ",
-                            "Maisch uit",
+                            "Maisch Uit",
                             "Koken     ",
                             "Koelen    ",
                             "Whirlpool ",
@@ -86,14 +86,14 @@ const char *stageName[] = { "Maisch in ",
                             "Whirlpool "
                           };
 #else
-const char *stageName[] = { "Mash in   ",
+const char *stageName[] = { "Mash In   ",
                             "Mash #1   ",
                             "Mash #2   ",
                             "Mash #3   ",
                             "Mash #4   ",
                             "Mash #5   ",
                             "Mash #6   ",
-                            "Mash out  ",
+                            "Mash Out  ",
                             "Boil      ",
                             "Cooling   ",
                             "Whirlpool ",
@@ -157,7 +157,7 @@ void Prompt(int Pmpt) {
   } else if ((Pmpt >= 200) && (Pmpt < 300)) {
     lcd.setCursor(1, 1);
   } else if ((Pmpt >= 300) && (Pmpt < 400)) {
-    lcd.setCursor(1, 2);
+    lcd.setCursor(0, 2);
   } else if ((Pmpt >= 400) && (Pmpt < 500)) {
     lcd.setCursor(0, 3);
   }
@@ -171,7 +171,7 @@ void Prompt(int Pmpt) {
       return;
     case P0_manual:
 #if langNL == true
-      lcd.print(F("   HAND BEDIENING   "));
+      lcd.print(F("   HANDBEDIENING    "));
 #else
       lcd.print(F("    MANUAL  MODE    "));
 #endif
@@ -215,7 +215,7 @@ void Prompt(int Pmpt) {
       return;
     case P1_pBKwater:
 #if langNL == true
-      lcd.print(F("Maischwater aanw? "));
+      lcd.print(F("Maischwater Aanw? "));
 #else
       lcd.print(F(" Have Mash water? "));
 #endif
@@ -223,7 +223,7 @@ void Prompt(int Pmpt) {
 #if USE_HLT == true
     case P1_pHLTwater:
 #if langNL == true
-      lcd.print(F(" Spoelwater aanw? "));
+      lcd.print(F(" Spoelwater Aanw? "));
 #else
       lcd.print(F("Have Sparge water?"));
 #endif
@@ -231,14 +231,14 @@ void Prompt(int Pmpt) {
 #endif
     case P1_ready:
 #if langNL == true
-      lcd.print(F(" Brouwen is klaar "));
+      lcd.print(F(" Brouwen is Klaar "));
 #else
       lcd.print(F(" Brew is finished "));
 #endif
       return;
     case P1_aborted:
 #if langNL == true
-      lcd.print(F("Brouwen afgebroken"));
+      lcd.print(F("Brouwen Afgebroken"));
 #else
       lcd.print(F("  Brew  aborted   "));
 #endif
@@ -259,39 +259,39 @@ void Prompt(int Pmpt) {
       return;
     case P1_twhirl:
 #if langNL == true
-      lcd.print(F("  Whirlpool tijd  "));
+      lcd.print(F("  Whirlpool Tijd  "));
 #else
-      lcd.print(F("  Whirlpool time  "));
+      lcd.print(F("  Whirlpool Time  "));
 #endif
       return;
     case P1_prime:
 #if langNL == true
-      lcd.print(F(" Pomp  ontluchten "));
+      lcd.print(F(" Pomp Ontluchten  "));
 #else
       lcd.print(F("    Pump Prime    "));
 #endif
       return;
     case P1_resume:
 #if langNL == true
-      lcd.print(F("  Hervat proces?  "));
+      lcd.print(F("  Hervat Proces?  "));
 #else
-      lcd.print(F(" Resume  process? "));
+      lcd.print(F(" Resume  Process? "));
 #endif
       return;
 
     case P2_clear:
-      LCDSpace(18);
+      LCDSpace(20);
       return;
     case P2_malt_add:
 #if langNL == true
-      lcd.print(F("   Mout storten   "));
+      lcd.print(F("   Mout Storten   "));
 #else
       lcd.print(F("     Add Malt     "));
 #endif
       return;
     case P2_malt_rem:
 #if langNL == true
-      lcd.print(F(" Mout verwijderen "));
+      lcd.print(F(" Mout Verwijderen "));
 #else
       lcd.print(F("   Remove Malt    "));
 #endif
