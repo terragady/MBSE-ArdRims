@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define  VERSION        "0.1.1"
+#define  VERSION        "0.1.2"
 
 /*
    EEPROM MAP
@@ -29,6 +29,9 @@
 #define  EM_SensorType       11   // Intern or Extern
 #define  EM_BoilTemperature  12   // Boil temperature °C
 //                           13   // Boil temperature °F
+#if USE_PumpPWM == true
+#define  EM_PumpSlow         13   // Pump Slow PWM value
+#endif
 #define  EM_PumpCycle        14   // Pump Cycle minutes
 #define  EM_PumpRest         15   // Pump Rest minutes
 #define  EM_PumpPreMash      16   // Pump Premash

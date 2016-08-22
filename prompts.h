@@ -52,8 +52,9 @@
 #define  P3_xxRx         417
 #define  P3_QQBO         418
 #define  P3_OOxO         419
+#define  P3_UDxQ         420
 #if DebugErrors == true
-#define  P3_erase        420
+#define  P3_erase        421
 #endif
 
 #define  X6Y1_temp       501
@@ -444,6 +445,14 @@ void Prompt(int Pmpt) {
       lcd.print(F("Aan   Uit        Ok "));
 #endif
       return;
+    case P3_UDxQ:
+#if langNL == true
+      lcd.print(F(" Op  Neer      Terug"));
+#else
+      lcd.print(F(" Up  Down       Quit"));
+#endif
+      return;
+
 #if DebugErrors == true
     case P3_erase:
       lcd.print(F("Clear all:  Yes  No "));

@@ -42,9 +42,19 @@ void editByte(const char *label, int address, int max, int min, void (*displayFu
           _editingValue = 75;
       }
     #endif
+    #if USE_PumpPWM == true
+    if (address == EM_PumpSlow) {
+      pump_PWM((_editingValue * 255) / 100);
+    }
+    #endif
 
     if (btn_Press(ButtonEnterPin, 50)) {
       editLoop = false;
+      #if USE_PumpPWM == true
+      if (address == EM_PumpSlow) {
+        pump_PWM(0);
+      }
+      #endif
     }
   }
   ew_byte(address, _editingValue);
@@ -293,6 +303,9 @@ void set_Unit(void) {
   editByte("Kook Temperatuur" , EM_BoilTemperature, 105, 60, & displaySimpleTemperature);
   editByte("Pomp Cyclus"      , EM_PumpCycle, 15, 5, & displayTime);
   editByte("Pomp Rust"        , EM_PumpRest, 5, 0, & displayTime);
+#if USE_PumpPWM == true
+  editByte("Pomp Langzaam"    , EM_PumpSlow, 100, 10, & displayPercentage);
+#endif
   editByte("Pomp Inmaischen"  , EM_PumpPreMash, 1, 0, & displayOnOff);
   editByte("Pomp Maischen"    , EM_PumpOnMash, 1, 0, & displayOnOff);
   editByte("Pomp Uitmaischen" , EM_PumpMashout, 1, 0, & displayOnOff);
@@ -307,6 +320,9 @@ void set_Unit(void) {
   editByte("Boil Temperature" , EM_BoilTemperature, 105, 90, & displaySimpleTemperature);
   editByte("Pump Cycle"       , EM_PumpCycle, 15, 5, & displayTime);
   editByte("Pump Rest"        , EM_PumpRest, 5, 0, & displayTime);
+#if USE_PumpPWM == true
+  editByte("Pump Lowspeed"    , EM_PumpSlow, 100, 10, & displayPercentage);
+#endif
   editByte("Pump Pre Mash"    , EM_PumpPreMash, 1, 0, & displayOnOff);
   editByte("Pump On Mash"     , EM_PumpOnMash, 1, 0, & displayOnOff);
   editByte("Pump Mash Out"    , EM_PumpMashout, 1, 0, & displayOnOff);

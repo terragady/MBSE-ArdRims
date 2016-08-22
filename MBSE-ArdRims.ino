@@ -18,9 +18,27 @@
 
 // should be false
 #define FakeHeating     false       // For development only.
-#define USE_HLT         false       // A HLT shared with the MLT. (Not yet).
+/*
+ * USE_HLT stands for Hot Liquor Tank. You need a second SSR and DS18B20 sensor on
+ * it's own bus. This SSR is only turned on if the main SSR is off.
+ * Gebruiken voor spoelwater met een 2e SSR en extra DS18B20 op zijn eigen bus.
+ * Spoelwater wordt alleen verwarmd als de hoofdketel niet verwarmd.
+ */
+#define USE_HLT         false       // A HLT shared with the MLT.
 #define Silent          false       // No beeps (during development).
-#define USE_ESP8266     false       // Add serial interface to ESP8266-12E DEVKIT   DO NOT USE !!! 
+#define USE_ESP8266     false       // Add serial interface to ESP8266-12E DEVKIT   DO NOT USE !!!
+/*
+ * USE_PumpPWM is for electronic regulated pumps without relays. Pump rest is slow, cooling is slow, 
+ * else full speed.
+ * In the Unit setup is an extra menu to adjust the slow speed. Connect the pump and let it pump to
+ * adjust the setting.
+ * USE_PumpPWM is voor een electronisch geregelde pomp. De pump rust is langzaam pompen, net als koelen,
+ * voor de rest wordt voluit gepompt.
+ * In de Unit setup kun je de snelheid instellen, sluit de pomp aan en laat die water pompen om een
+ * goede instelling te vinden.
+ */
+#define USE_PumpPWM     false       // true = Pump PWM control, false = On/Off.
+
 
 // Serial debugging
 #define DebugPID        false
@@ -197,6 +215,9 @@ byte    hopAdd;
 byte    MashState;
 byte    LogFactor = 0;
 byte    pumpTime;
+#if USE_PumpPWM == true
+byte    pumpPWM = 0;
+#endif
 
 
 double  Input;
@@ -229,6 +250,7 @@ void PID_Heat(boolean);
 void bk_heat_on();
 void bk_heat_off();
 void pump_off();
+void pump_PWM(byte);
 void HLT_on();
 void HLT_off();
 void Buzzer(byte, int);
@@ -398,8 +420,13 @@ void Temperature() {
   // Allways loose heat to the air
   if (Temp_MLT > 16.0) {
     Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000010 * (Temp_MLT - 16.0);
+#if USE_PumpPWM == true
+    if (pumpPWM > 0) // More heat loss when pump is on
+      Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000007 * (Temp_MLT - 16.0);
+#else
     if (digitalRead(PumpControlPin) == HIGH) // More heat loss when pump is on
       Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000007 * (Temp_MLT - 16.0);
+#endif
   }
 
 #if USE_HLT == true
@@ -550,6 +577,31 @@ void bk_heat_hide() {
 /*
    Pump control.
 */
+#if USE_PumpPWM == true
+
+void pump_PWM(byte val) {
+  pumpPWM = val;
+  analogWrite(PumpControlPin, val);
+}
+void pump_slow(byte val) {
+  pump_PWM((val * 255) / 100);
+  LCDChar(19, 2, 4);
+}
+void pump_on() {
+  pump_PWM(255);
+  LCDChar(19, 2, 4);
+}
+void pump_off() {
+  pump_PWM(0);
+  LCDChar(19, 2, 3);
+}
+void pump_hide() {
+  pump_PWM(0);
+  LCDChar(19, 2, 32);
+}
+
+#else
+
 void pump_on() {
   digitalWrite(PumpControlPin, HIGH);
   LCDChar(19, 2, 4);
@@ -563,6 +615,7 @@ void pump_hide() {
   LCDChar(19, 2, 32);
 }
 
+#endif
 
 
 /*
@@ -604,11 +657,17 @@ void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) 
 #if USE_HLT == true
   if (PWM && HLTtemp)
     // Dual show Mash PWM and HLT temperature.
+#if USE_PumpPWM == true
+    (TimeSpent % 5) ? Prompt(X1Y2_pwm) : Prompt(X1Y2_temp);
+#else
     ((TimeSpent % 5) && ! pumpRest) ? Prompt(X1Y2_pwm) : Prompt(X1Y2_temp);
+#endif
   else if (PWM) {
+#if USE_PumpPWM == false
     if (pumpRest)
       Prompt(X1Y2_blank);
     else
+#endif
       Prompt(X1Y2_pwm);
   } else if (HLTset)
     Prompt(X1Y2_temp);
@@ -620,9 +679,11 @@ void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) 
     Prompt(X11Y2_setpoint);
 #else
   if (PWM) {
+#if USE_PumpPWM == false
     if (pumpRest)
       Prompt(X1Y2_blank);
     else
+#endif
       Prompt(X1Y2_pwm);
   }
   if (Timer)
@@ -635,12 +696,28 @@ void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) 
 /*
    Toggle pump
 */
+#if USE_PumpPWM == true
+
+void PumpControl(byte val) {
+  //turns the pump on or off
+  if (btn_Press(ButtonStartPin, 50)) {
+    if (pumpPWM == 0)
+      pump_slow(val);
+    else if (pumpPWM == 255)
+      pump_hide();
+    else
+      pump_on();
+  }
+}
+
+#else
+
 void PumpControl() {
   //turns the pump on or off
   if (btn_Press(ButtonStartPin, 50))
     (digitalRead(PumpControlPin) == HIGH) ? pump_hide() : pump_on();
 }
-
+#endif
 
 
 /*
@@ -692,6 +769,9 @@ void manual_mode() {
   boolean hheat        = false;
   boolean htempReached = false;
   boolean hreachedBeep = false;
+#endif
+#if USE_PumpPWM == true
+  byte _EM_PumpSlow = er_byte(EM_PumpSlow);
 #endif
 
   lcd.clear();
@@ -807,8 +887,13 @@ void manual_mode() {
         break;
 
       case 3:          // manual Pump control.
+#if USE_PumpPWM == true
+        (pumpPWM) ? Prompt(P3_xx0Q) : Prompt(P3_xx1Q);
+        PumpControl(_EM_PumpSlow);
+#else
         (digitalRead(PumpControlPin) == HIGH) ? Prompt(P3_xx0Q) : Prompt(P3_xx1Q);
         PumpControl();
+#endif
         if (btn_Press(ButtonEnterPin, 50))
           manualMenu = 0;
         break;
@@ -837,6 +922,9 @@ void auto_mode() {
   byte    _EM_Whirlpool_2      = er_byte(EM_Whirlpool_2);
   byte    _EM_PumpCycle        = er_byte(EM_PumpCycle);
   byte    _EM_PumpRest         = er_byte(EM_PumpRest);
+#if USE_PumpPWM == true
+  byte    _EM_PumpSlow         = er_byte(EM_PumpSlow);
+#endif
   byte    LastMashStep         = 0;
   byte    ResumeTime;
   boolean Resume               = false;
@@ -1068,11 +1156,32 @@ startover:
       case StageMash6:
       case StageMashOut:
         if (CurrentState == StageMashIn) {
+#if USE_PumpPWM == true
+          if (_EM_PumpPreMash)
+            (! pumpRest) ? pump_on() : pump_slow(_EM_PumpSlow);
+          else
+            pump_off();
+#else
           (_EM_PumpPreMash && ! pumpRest) ? pump_on() : pump_off();
+#endif
         } else if (CurrentState == StageMashOut) {
+#if USE_PumpPWM == true
+          if (_EM_PumpMashout)
+            (! pumpRest) ? pump_on() : pump_slow(_EM_PumpSlow);
+          else
+            pump_off();
+#else
           (_EM_PumpMashout && ! pumpRest) ? pump_on() : pump_off();
+#endif
         } else {
+#if USE_PumpPWM == true
+          if (_EM_PumpOnMash)
+            (! pumpRest) ? pump_on() : pump_slow(_EM_PumpSlow);
+          else
+            pump_off();
+#else
           (_EM_PumpOnMash && ! pumpRest) ? pump_on() : pump_off();
+#endif
         }
         if (MashState == MashNone) {
           _EM_StageTemp = word(er_byte(EM_StageTemp(CurrentState)), er_byte(EM_StageTemp(CurrentState) + 1)) / 16.0;
@@ -1125,6 +1234,15 @@ startover:
              Mash step rest time
              Pump rest control
           */
+#if USE_PumpPWM == true
+          if (((CurrentState == StageMashOut) && _EM_PumpMashout) || ((CurrentState != StageMashOut) && _EM_PumpOnMash)) {
+            if (pumpTime >= (_EM_PumpCycle + _EM_PumpRest)) {
+              pumpTime = 0;
+            }
+            pumpRest = (pumpTime >= _EM_PumpCycle);
+          }
+          PID_Heat(true);
+#else
           if (((CurrentState == StageMashOut) && _EM_PumpMashout) || ((CurrentState != StageMashOut) && _EM_PumpOnMash)) {
             DeltaTemp = _EM_PumpRest * stageTemp / 120; // Maximum temperature drop before heating again.
             if (pumpTime >= (_EM_PumpCycle + _EM_PumpRest) || ((stageTemp - Temp_MLT) > DeltaTemp)) {
@@ -1133,6 +1251,7 @@ startover:
             pumpRest = (pumpTime >= _EM_PumpCycle);
           }
           (pumpRest) ? bk_heat_off() : PID_Heat(true);
+#endif
 
           /*
              End of mash step time
@@ -1184,10 +1303,16 @@ startover:
           Serial.print(TimeLeft);
           Serial.print(F(" Steady: "));
           Serial.print(Steady);
+#if USE_PumpPWM == false
           Serial.print(F(" DeltaTemp: "));
           Serial.print(DeltaTemp);
+#endif
           Serial.print(F(" pumpTime: "));
           Serial.print(pumpTime);
+#if USE_PumpPWM == true
+          Serial.print(F(" pumpPWM: "));
+          Serial.print(pumpPWM);
+#endif
           Serial.print(F(" pumpRest: "));
           (pumpRest) ? Serial.println(F("true")) : Serial.println(F("false"));
           Debugger = false;
@@ -1322,7 +1447,10 @@ startover:
         Prompt(P0_stage);
         Setpoint = stageTemp;
         DisplayValues(false, false, false, false);
-        Prompt(P3_UDPQ);
+        if (Temp_MLT < _EM_PumpMaxTemp)
+          Prompt(P3_UDPQ);
+        else
+          Prompt(P3_UDxQ);
         ReadButton(Direction, Timer);
         if (_EM_Whirlpool_7 && ! WP7Done)
           Set(stageTemp, 77, 71, 0.25, Timer, Direction);
@@ -1330,7 +1458,12 @@ startover:
           Set(stageTemp, 66, 60, 0.25, Timer, Direction);
         else
           Set(stageTemp, 30, 10, 0.25, Timer, Direction);
+        if (Temp_MLT < _EM_PumpMaxTemp)
+#if USE_PumpPWM == true
+        PumpControl(_EM_PumpSlow);
+#else
         PumpControl();
+#endif
         /*
            Make some noise when aproaching the final cooling temperature.
         */
@@ -1500,7 +1633,11 @@ void setup() {
   pinMode (ButtonStartPin, INPUT_PULLUP);
   pinMode (ButtonEnterPin, INPUT_PULLUP);
   digitalWrite (HeatControlPin, LOW);
+#if USE_PumpPWM == true
+  pump_PWM(0);
+#else
   digitalWrite (PumpControlPin, LOW);
+#endif
   digitalWrite (BuzzControlPin, LOW);
 #if USE_HLT == true
   digitalWrite (HLTControlPin,  LOW);
