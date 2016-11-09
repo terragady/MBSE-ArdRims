@@ -6,27 +6,29 @@ unsigned long TimeLeft;
 unsigned long TimeSpent;
 unsigned long Steady;
 
+
 /*
  * Should be called as much as possible
  */
 void TimerRun() {
 
   gCurrentTimeInMS = millis();
+  
   if (_seconds != myTimer.readTimer()) {
     _seconds = myTimer.readTimer();
+
     TimeSpent++;
     Steady++;
 
     if (TimeLeft) {
       TimeLeft--;
-      if (TimeLeft == 0)
-        Buzzer(1, 500);
-      else if (TimeLeft <= 10)
-        Buzzer(1, 35);
+      if (TimeLeft == 5)
+        BuzzerPlay(BUZZ_TimeOut);
       if ((TimeLeft % 60) == 0)
         pumpTime++;
     }    
   }
+
 }
 
 

@@ -34,7 +34,7 @@ Differences between other systems and MBSE-ArdRims:
     and the Dutch language is selected using a define.
 9.  Conditional defines to add a SSR and a DS18B20 sensor on a separate one-
     wire bus to control a Hot Liquer Tank. Heating is timeshared with the
-    normal Mash heater.
+    normal Mash heater. USE_HLT true/false.
 10. Improved and more robust 1-wire bus reads for the sensor(s).
 11. No timer control in manual mode. Use the wall clock.
 12. Automatic mode is now state controlled. This saves memory and the code is
@@ -50,7 +50,12 @@ Differences between other systems and MBSE-ArdRims:
 17. The cooling destination temperature can be set as a Auto/Recipe setting.
 18. Better timing using the interrupt driven secTimer library. This works
     much better then the old millis() function.
-
+19. Conditional define (USE_PumpPWM true/false) that allows you to regulate
+    the pump speed using the Arduino PWM signals. Default is false and must
+    be used if the pump is connected using a relay. If true, you must use a
+    electronic power circuit. waarmee de pomp snelheid
+    electronisch geregeld kan worden. Default false, dus voor relais. Indien
+    true moet je zorgen voor een elektronische vermogens regeling.
 
 Next to the standard Arduino libraries you need to install the following extra
 libraries:

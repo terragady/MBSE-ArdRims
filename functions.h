@@ -2,8 +2,8 @@
 #define	FUNCTIONS_H
 
 /*
- * Read byte from EEPROM
- */
+   Read byte from EEPROM
+*/
 byte er_byte(int addr) {
 #if DebugReadWrite == true
   Serial.print (F("R-> "));
@@ -16,8 +16,8 @@ byte er_byte(int addr) {
 }
 
 /*
- * Update byte in EEPROM
- */
+   Update byte in EEPROM
+*/
 void ew_byte(int addr, byte data) {
 #if DebugReadWrite == true
   byte old = EEPROM.read(addr);

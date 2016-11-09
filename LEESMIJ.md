@@ -39,6 +39,7 @@ Verschillen tussen andere software en MBSE-ArdRims:
 9.  Een conditionele define om een extra SSR en DS18B20 sensor te gebruiken
     voor spoelwater. De verwarming gebeurt als er niet verwarmt wordt in de
     maisch ketel, dus het maximale stroomverbruik is die van de zwaarste ketel.
+    USE_HLT true/false.
 10. Verbeterde en meer robuuste uitlezing van de 1-wire sensoren.
 11. Geen timer tijdens de handbediening, kijk zelf maar op de klok.
 12. De code voor Automatic mode is nu State code. Dit scheelt geheugen en de
@@ -55,6 +56,9 @@ Verschillen tussen andere software en MBSE-ArdRims:
 17. De koel temperatuur wordt opgeslagen als een Auto/Recept instelling.
 18. De timing wordt gedaan met een interrupt timer van de secTimer library.
     Dat werkt stukken beter als de oude millis() methode.
+19. Een conditional define (USE_PumpPWM true/false) waarmee de pomp snelheid
+    electronisch geregeld kan worden. Default false, dus voor relais. Indien
+    true moet je zorgen voor een elektronische vermogens regeling.
 
 
 Naast de standaard Arduino bibliotheken zijn de volgende extra bibliotheken

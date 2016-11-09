@@ -1,11 +1,12 @@
-// ==============================================
-// ATTENTION!!!!!
-// YOU MUST SET ONLY THIS SECTION
-// ==============================================
 
 #include <EEPROM.h>
 #include <OneWire.h>
 #include <PID_v1.h>
+
+/************************************************************************************************
+
+     CONFIGURATION OPTIONS  --   CONFIGURATIE OPTIES
+*/
 
 //SET PCB
 // 1 Brauduino Original (Matho's PCB)
@@ -13,44 +14,49 @@
 // 3 ArdBir by DanielXan
 // 4 Protoduino NANO by J. Klinge
 // 5 ArdRims NANO by C. Broek
-// 6 ArduinoBrewboard by J. Klinge ?? 2 soorten ??
+// 6 ArduinoBrewboard by J. Klinge
 #define PCBType 5
 
 // should be false
 #define FakeHeating     false       // For development only.
 /*
- * USE_HLT stands for Hot Liquor Tank. You need a second SSR and DS18B20 sensor on
- * it's own bus. This SSR is only turned on if the main SSR is off.
- * Gebruiken voor spoelwater met een 2e SSR en extra DS18B20 op zijn eigen bus.
- * Spoelwater wordt alleen verwarmd als de hoofdketel niet verwarmd.
- */
+   USE_HLT stands for Hot Liquor Tank. You need a second SSR and DS18B20 sensor on
+   it's own bus. This SSR is only turned on if the main SSR is off.
+   Gebruiken voor spoelwater met een 2e SSR en extra DS18B20 op zijn eigen bus.
+   Spoelwater wordt alleen verwarmd als de hoofdketel niet verwarmd.
+*/
 #define USE_HLT         false       // A HLT shared with the MLT.
 #define Silent          false       // No beeps (during development).
-#define USE_ESP8266     false       // Add serial interface to ESP8266-12E DEVKIT   DO NOT USE !!!
 /*
- * USE_PumpPWM is for electronic regulated pumps without relays. Pump rest is slow, cooling is slow, 
- * else full speed.
- * In the Unit setup is an extra menu to adjust the slow speed. Connect the pump and let it pump to
- * adjust the setting.
- * USE_PumpPWM is voor een electronisch geregelde pomp. De pump rust is langzaam pompen, net als koelen,
- * voor de rest wordt voluit gepompt.
- * In de Unit setup kun je de snelheid instellen, sluit de pomp aan en laat die water pompen om een
- * goede instelling te vinden.
- */
+   USE_PumpPWM is for electronic regulated pumps without relays. Pump rest is slow, cooling is slow,
+   else full speed.
+   In the Unit setup is an extra menu to adjust the slow speed. Connect the pump and let it pump to
+   adjust the setting.
+   USE_PumpPWM is voor een electronisch geregelde pomp. De pump rust is langzaam pompen, net als koelen,
+   voor de rest wordt voluit gepompt.
+   In de Unit setup kun je de snelheid instellen, sluit de pomp aan en laat die water pompen om een
+   goede instelling te vinden.
+*/
 #define USE_PumpPWM     false       // true = Pump PWM control, false = On/Off.
 
 
 // Serial debugging
 #define DebugPID        false
-#define DebugProcess    false
-#define DebugButton     false
-#define DebugReadWrite  false
+#define DebugProcess    true
+#define DebugButton     true
+#define DebugBuzzer     true
+#define DebugReadWrite  true
 #define DebugErrors     true
 
 
 // Default language is English, others must be set.
 // Nederlands.
 #define langNL          true
+
+/*
+    END OF CONFIGURATION OPTIONS  --  EINDE CONFIGURATIE OPTIES
+
+ *****************************************************************************************/
 
 // Don not change this next block
 #if FakeHeating == true
@@ -141,6 +147,7 @@ LiquidCrystal lcd(A4, A5, 2, 3, 4, 5);
 #elif (PCBType == 6)
 LiquidCrystal lcd(A5, A4, 2, 3, 4, 5);
 #endif
+
 
 /*
    Timer using the interrupt driven secTimer library.
@@ -253,8 +260,9 @@ void pump_off();
 void pump_PWM(byte);
 void HLT_on();
 void HLT_off();
-void Buzzer(byte, int);
+void AllThreads();
 
+#include "buzzer.h"
 #include "functions.h"
 #include "timers.h"
 #include "buttons.h"
@@ -700,7 +708,7 @@ void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) 
 
 void PumpControl(byte val) {
   //turns the pump on or off
-  if (btn_Press(ButtonStartPin, 50)) {
+  if (button_Used(buttonStart, 50)) {
     if (pumpPWM == 0)
       pump_slow(val);
     else if (pumpPWM == 255)
@@ -714,7 +722,7 @@ void PumpControl(byte val) {
 
 void PumpControl() {
   //turns the pump on or off
-  if (btn_Press(ButtonStartPin, 50))
+  if (button_Used(buttonStart, 50))
     (digitalRead(PumpControlPin) == HIGH) ? pump_hide() : pump_on();
 }
 #endif
@@ -726,10 +734,12 @@ void PumpControl() {
 */
 void IodineTest(void) {
   byte IodineTime = er_byte(EM_IodoneTime);
+  boolean beeped = false;
 
   TimerSet(IodineTime * 60);
   while (true) {
-    Temperature();
+    AllThreads();
+
     Input = Temp_MLT;
     Prompt(P0_iodine);
 #if USE_HLT == true
@@ -743,11 +753,17 @@ void IodineTest(void) {
       HLT_Heat();
 #endif
 
-    if (TimeSpent % 45 == 0)
-      Buzzer(1, 65);
+    if (TimeSpent % 45 == 0) {
+      if (! beeped) {
+        BuzzerPlay(BUZZ_Warn);
+        beeped = true;
+      }
+    } else {
+      beeped = false;
+    }
 
     Prompt(P3_xxxO);
-    if (btn_Press(ButtonEnterPin, 50) || (TimeLeft == 0)) {
+    if (button_Used(buttonEnter, 50) || (TimeLeft == 0)) {
       return;
     }
   }
@@ -791,8 +807,8 @@ void manual_mode() {
   LoadPIDsettings();
 
   while (true) {
+    AllThreads();
 
-    Temperature();
     Setpoint = mset_temp;
     Input = Temp_MLT;
 
@@ -803,7 +819,7 @@ void manual_mode() {
     }
 
     if (mtempReached && (mreachedBeep == false)) {
-      Buzzer(3, 250);
+      BuzzerPlay(BUZZ_TempReached);
       mreachedBeep = true;
     }
 
@@ -819,7 +835,7 @@ void manual_mode() {
     }
 
     if (htempReached && (hreachedBeep == false)) {
-      Buzzer(3, 250);
+      BuzzerPlay(BUZZ_Warn);
       hreachedBeep = true;
     }
 
@@ -834,16 +850,16 @@ void manual_mode() {
       case 0:          // manual Main menu
 #if USE_HLT == true
         Prompt(P3_HBPQ);
-        if (btn_Press(ButtonUpPin, 50))
+        if (button_Used(buttonUp, 50))
           manualMenu = 1;
 #else
         Prompt(P3_xBPQ);
 #endif
-        if (btn_Press(ButtonDownPin, 50))
+        if (button_Used(buttonDown, 50))
           manualMenu = 2;
-        if (btn_Press(ButtonStartPin, 50))
+        if (button_Used(buttonStart, 50))
           manualMenu = 3;
-        if (btn_Press(ButtonEnterPin, 50)) {
+        if (button_Used(buttonEnter, 50)) {
           lcd.clear();
           bk_heat_hide();
           pump_hide();
@@ -863,10 +879,10 @@ void manual_mode() {
           // Increased setting at least 2 degrees
           htempReached = hreachedBeep = false;
         }
-        if (btn_Press(ButtonStartPin, 50)) {
+        if (button_Used(buttonStart, 50)) {
           (hheat) ? hheat = false : hheat = true;
         }
-        if (btn_Press(ButtonEnterPin, 50))
+        if (button_Used(buttonEnter, 50))
           manualMenu = 0;
         break;
 #endif
@@ -879,10 +895,10 @@ void manual_mode() {
           // Increased setting at least 2 degrees
           mtempReached = mreachedBeep = false;
         }
-        if (btn_Press(ButtonStartPin, 50)) {
+        if (button_Used(buttonStart, 50)) {
           (mheat) ? mheat = false : mheat = true;
         }
-        if (btn_Press(ButtonEnterPin, 50))
+        if (button_Used(buttonEnter, 50))
           manualMenu = 0;
         break;
 
@@ -894,7 +910,7 @@ void manual_mode() {
         (digitalRead(PumpControlPin) == HIGH) ? Prompt(P3_xx0Q) : Prompt(P3_xx1Q);
         PumpControl();
 #endif
-        if (btn_Press(ButtonEnterPin, 50))
+        if (button_Used(buttonEnter, 50))
           manualMenu = 0;
         break;
     }
@@ -981,7 +997,8 @@ void auto_mode() {
   do {
 startover:
 
-    Temperature();
+    AllThreads();
+
     Input = Temp_MLT;
     TimerRun();
     if ((byte)((TimeLeft % 3600) / 60) != tmpMinute) {
@@ -1058,6 +1075,7 @@ startover:
             stageTemp = word(er_byte(EM_CoolingTemp), er_byte(EM_CoolingTemp + 1)) / 16.0;
           }
 #if DebugProcess == true
+          TimerSet(240 * 60);
           DebugTimeSerial();
           Serial.print(F("Start Cooling Temp="));
           Serial.print(Temp_MLT);
@@ -1095,13 +1113,14 @@ startover:
 
           Pwhirl = true;
           while (Pwhirl) {
+            AllThreads();
             TimerShow(TimeWhirlPool * 60, 6, 2);
             Prompt(P3_SGQO);
             ReadButton(Direction, Timer);
             Set((TimeWhirlPool), WhirlpoolMaxtime, 1, 1, Timer, Direction);
-            if (btn_Press(ButtonStartPin, 1500))
+            if (button_Used(buttonStart, 1500))
               Pwhirl = false;
-            if (btn_Press(ButtonEnterPin, 50)) {
+            if (button_Used(buttonEnter, 50)) {
               Pwhirl = false;
               TimerSet(TimeWhirlPool * 60);
             }
@@ -1211,8 +1230,8 @@ startover:
             Debugger = true;
 #endif
           }
-          if ((Temp_MLT >= stageTemp) && (Steady > 20)) {
-            Buzzer (3, 250);
+          if ((Temp_MLT >= stageTemp) && (Steady > 10)) {
+            BuzzerPlay(BUZZ_TempReached);
             MashState = MashRest;
             if (CurrentState == StageMashIn)
               TimerSet(0);
@@ -1327,7 +1346,7 @@ startover:
         DisplayValues(true, (MashState == MashRest), false, false);
 #endif
         Prompt(P3_xxRx);
-        if ((btn_Press(ButtonStartPin, 50)) && ! Pause()) {
+        if ((button_Used(buttonStart, 50)) && ! Pause()) {
           NewState = StageAborted;
         }
         break;
@@ -1365,9 +1384,9 @@ startover:
           ReadButton(Direction, Timer);
           Set(stageTemp, 105, 90, 1, Timer, Direction);
           Setpoint = stageTemp;
-          if ((Temp_MLT >= stageTemp) && (Steady > 20)) {
+          if ((Temp_MLT >= stageTemp) && (Steady > 10)) {
             tempBoilReached = true;
-            Buzzer(3, 250);
+            BuzzerPlay(BUZZ_TempReached);
             stageTime = er_byte(EM_BoilTime);
             TimerSet((stageTime * 60) + 60);   // +1 minute for flameout
 #if DebugProcess == true
@@ -1396,14 +1415,12 @@ startover:
              Check for Hop (or something else) addition
           */
           if (newMinute && (hopAdd < nmbrHops) && (stageTime == hopTime)) {
-            Buzzer(4, 250);
+            BuzzerPlay(BUZZ_AddHop);
             // Put it on the display, it will be visible during one minute
             lcd.setCursor(10, 0);
             lcd.print(F(" Hop: "));
             hopAdd++;
             lcd.print(hopAdd);
-            delay(500);
-            Buzzer(1, 750);
             ew_byte(EM_HopAddition, hopAdd);
             hopTime = er_byte(EM_TimeOfHop(hopAdd));
           }
@@ -1434,7 +1451,7 @@ startover:
           Debugger = false;
         }
 #endif
-        if (btn_Press(ButtonStartPin, 50) && ! Pause()) {
+        if (button_Used(buttonStart, 50) && ! Pause()) {
           NewState = StageAborted;
         }
         break;
@@ -1460,20 +1477,20 @@ startover:
           Set(stageTemp, 30, 10, 0.25, Timer, Direction);
         if (Temp_MLT < _EM_PumpMaxTemp)
 #if USE_PumpPWM == true
-        PumpControl(_EM_PumpSlow);
+          PumpControl(_EM_PumpSlow);
 #else
-        PumpControl();
+          PumpControl();
 #endif
         /*
            Make some noise when aproaching the final cooling temperature.
         */
         if (! CoolBeep && (Temp_MLT < (stageTemp + 2.0))) {
           CoolBeep = true;
-          Buzzer(4, 100);
+          BuzzerPlay(BUZZ_Warn);
         }
         if (Temp_MLT <= stageTemp)
-          Buzzer(3, 250);
-        if ((Temp_MLT <= stageTemp) || (btn_Press(ButtonEnterPin, 2500))) {
+          BuzzerPlay(BUZZ_TempReached);
+        if ((Temp_MLT <= stageTemp) || (button_Used(buttonEnter, 2500))) {
           if (_EM_Whirlpool_7 && ! WP7Done) {
             NewState = StageWhirlpool7;
           } else if (_EM_Whirlpool_6 && ! WP6Done) {
@@ -1484,6 +1501,27 @@ startover:
             NewState = StageFinished;
           }
         }
+
+#if DebugProcess == true
+        if (newMinute)
+          Debugger = true;
+
+        if (Debugger == true) {
+          DebugTimeSerial();
+          Serial.print(F("Cooling Temp: "));
+          Serial.print(Temp_MLT);
+          Serial.print(F(" Sp: "));
+          Serial.print(stageTemp);
+#if USE_PumpPWM == true
+          Serial.print(F(" PumpPWM: "));
+          Serial.println(pumpPWM);
+#else
+          Serial.print(F(" Pump: "));
+          (digitalRead(PumpControlPin) == HIGH) ? Serial.println(F("On")) : Serial.println(F("Off"));
+#endif
+          Debugger = false;
+        }
+#endif
         break;
 
       case StageWhirlpool2:
@@ -1510,7 +1548,7 @@ startover:
           PID_Heat(true);     // Setpoint is already set
         DisplayValues((CurrentState != StageWhirlpool2), true, false, false);
         Prompt(P3_xxRx);
-        if (((btn_Press(ButtonStartPin, 50)) && (! Pause())) || (TimeLeft == 0)) {
+        if (((button_Used(buttonStart, 50)) && (! Pause())) || (TimeLeft == 0)) {
           NewState = StageCooling;
           if (CurrentState == StageWhirlpool9)
             WP9Done = true;
@@ -1574,7 +1612,7 @@ startover:
         // Change setpoint here?
         HLT_Heat();
         if (Temp_HLT >= HLT_SetPoint) {
-          Buzzer(3, 250);
+          BuzzerPlay(BUZZ_Warn);
           NewState = StageDelayStart;
         }
 #else
@@ -1598,13 +1636,17 @@ startover:
         lcd.clear();
         if (CurrentState == StageFinished) {
           Prompt(P1_ready);
-          Buzzer(1, 1000);
+          BuzzerPlay(BUZZ_End);
         } else {
           Prompt(P1_aborted);
         }
         ew_byte(EM_AutoModeStarted, 0);
         Prompt(P3_xxxO);
-        while ((btn_Press(ButtonEnterPin, 50)) == false);
+        while (true) {
+          AllThreads();
+          if (button_Used(buttonEnter, 50))
+            break;
+        }
         break;
     }
     newMinute = false;
@@ -1616,29 +1658,38 @@ startover:
 }
 
 
+/*
+   All global threads go in here, until the program is rebuild.
+   Then this code goes in loop().
+*/
+void AllThreads() {
+  Temperature();
+  gCurrentTimeInMS = millis();
+  ButtonsThread();
+  BuzzerThread();
+}
+
 
 void setup() {
-#if (DebugPID == true || DebugProcess == true || DebugButton == true || DebugReadWrite == true)
+#if (DebugPID == true || DebugProcess == true || DebugButton == true || DebugReadWrite == true || DebugBuzzer == true)
   Serial.begin(115200);
 #endif
 
   pinMode (HeatControlPin, OUTPUT);
   pinMode (PumpControlPin, OUTPUT);
-  pinMode (BuzzControlPin, OUTPUT);
 #if USE_HLT == true
   pinMode (HLTControlPin,  OUTPUT);
 #endif
-  pinMode (ButtonUpPin,    INPUT_PULLUP);
-  pinMode (ButtonDownPin,  INPUT_PULLUP);
-  pinMode (ButtonStartPin, INPUT_PULLUP);
-  pinMode (ButtonEnterPin, INPUT_PULLUP);
+
+  BuzzerInit();
+  ButtonsInit();
+
   digitalWrite (HeatControlPin, LOW);
 #if USE_PumpPWM == true
   pump_PWM(0);
 #else
   digitalWrite (PumpControlPin, LOW);
 #endif
-  digitalWrite (BuzzControlPin, LOW);
 #if USE_HLT == true
   digitalWrite (HLTControlPin,  LOW);
 #endif
@@ -1652,7 +1703,8 @@ void setup() {
   myPID.SetMode(AUTOMATIC);
 
   lcd.begin(20, 4);
-  Buzzer(1, 50);
+  //  Buzzer(1, 50);
+  BuzzerPlay(BUZZ_Prompt);
 
   // write custom symbol to LCD
   lcd.createChar(0, degC);         // Celcius
@@ -1677,17 +1729,17 @@ void setup() {
     EEPROM.write(EM_Signature + 1, 'B');
     EEPROM.write(EM_Version, 0);
     EEPROM.write(EM_Revision, 1);
-#if USE_ESP8266 == false
     // Erase all recipes because original ArdBir (and others)
     // are 2 bytes off.
     for (byte i = 0; i < 10; i++)
       EEPROM.write(EM_RecipeIndex(i), 0);
-#endif
   }
 }
 
 
 void loop() {
+
+  AllThreads();
 
   switch (mainMenu) {
 
@@ -1707,7 +1759,7 @@ void loop() {
       break;
 
     default:
-      Temperature();
+
       Prompt(P0_banner);
       Prompt(X6Y1_temp);
 #if USE_HLT == true
@@ -1717,15 +1769,15 @@ void loop() {
 #endif
       Prompt(P3_xMAS);
 
-      if (btn_Press(ButtonDownPin, 500))
+      if (button_Used(buttonDown, 500))
         mainMenu = 1;
-      if (btn_Press(ButtonStartPin, 500))
+      if (button_Used(buttonStart, 500))
         mainMenu = 2;
-      if (btn_Press(ButtonEnterPin, 500))
+      if (button_Used(buttonEnter, 500))
         mainMenu = 3;
 #if DebugErrors == true
       // "Secret" counters reset
-      if (btn_Press(ButtonUpPin, 1000)) {
+      if (button_Used(buttonUp, 1000)) {
         lcd.clear();
         byte x = 1;
         byte y = 0;
@@ -1742,11 +1794,12 @@ void loop() {
           }
         }
         Prompt(P3_erase);
-        Buzzer(1, 100);
+        BuzzerPlay(BUZZ_Prompt);
         while (true) {
-          if (btn_Press(ButtonEnterPin, 50))
+          AllThreads();
+          if (button_Used(buttonEnter, 50))
             break;
-          if (btn_Press(ButtonStartPin, 50)) {
+          if (button_Used(buttonStart, 50)) {
             for (byte i = 0; i < 10; i++)
               ew_byte(EM_ErrorNo(i), 0);
             break;

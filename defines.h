@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define  VERSION        "0.1.2"
+#define  VERSION        "0.1.3"
 
 /*
    EEPROM MAP
@@ -107,14 +107,12 @@
 
     RECIPE
 */
-#if USE_ESP8266 == false
 #define  EM_RecipeIndexBase  90   // Index 1-10
 #define  EM_RecipeIndex(i)   ((EM_RecipeIndexBase)+(i))
 #define  EM_RecipeDataBase  100   // Recipe data
 #define  EM_RecipeData(i)    ((EM_RecipeDataBase)+(i)*52)
 #define  EM_RecipeNameBase  620   // Recipe name
 #define  EM_RecipeName(i)    ((EM_RecipeNameBase)+(i)*10)
-#endif
 /*
 	 90 -  99 Index 1-10
 	100 - 151 Recipe Data  1

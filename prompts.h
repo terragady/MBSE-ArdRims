@@ -26,9 +26,7 @@
 #define  P2_clear        300
 #define  P2_malt_add     301
 #define  P2_malt_rem     302
-#if USE_ESP8266 == false
 #define  P2_norecipe     303
-#endif
 
 #define  P3_clear        400
 #define  P3_xMAS         401
@@ -105,18 +103,6 @@ const char *stageName[] = { "Mash In   ",
 #endif
 
 
-void Buzzer(byte NumBeep, int Period) {
-#if Silent != true
-  for (byte i = 0; i < NumBeep; i++) {
-    digitalWrite (BuzzControlPin, HIGH);
-    delay (Period);
-    digitalWrite(BuzzControlPin, LOW);
-    delay(75);
-  }
-#endif
-}
-
-
 void LCDSpace (byte Num) {
   for (byte i = 0; i < Num; i++)
     lcd.write(32);
@@ -145,8 +131,8 @@ void FormatNumber(float Numero, int Offset) {
 
 
 /*
- * LCD messages
- */
+   LCD messages
+*/
 void Prompt(int Pmpt) {
   float Temp;
 
@@ -285,27 +271,25 @@ void Prompt(int Pmpt) {
       return;
     case P2_malt_add:
 #if langNL == true
-      lcd.print(F("   Mout Storten   "));
+      lcd.print(F("    Mout Storten   "));
 #else
-      lcd.print(F("     Add Malt     "));
+      lcd.print(F("      Add Malt     "));
 #endif
       return;
     case P2_malt_rem:
 #if langNL == true
-      lcd.print(F(" Mout Verwijderen "));
+      lcd.print(F("  Mout Verwijderen "));
 #else
-      lcd.print(F("   Remove Malt    "));
+      lcd.print(F("    Remove Malt    "));
 #endif
       return;
-#if USE_ESP8266 == false
     case P2_norecipe:
 #if langNL == true
-      lcd.print(F("  GEEN RECEPTEN!  "));
+      lcd.print(F("   GEEN RECEPTEN!  "));
 #else
-      lcd.print(F("   NO  RECIPES!   "));
+      lcd.print(F("    NO  RECIPES!   "));
 #endif
       return;
-#endif
 
     case P3_clear:
       LCDSpace(20);
@@ -533,28 +517,29 @@ boolean PromptForMashWater(boolean Mash) {
 #endif
   Prompt(P3_proceed);
   while (true) {
-    if (btn_Press(ButtonStartPin, 50))
+    AllThreads();
+    if (button_Used(buttonStart, 50))
       return true;
-    if (btn_Press(ButtonEnterPin, 50))
+    if (button_Used(buttonEnter, 50))
       return false;
   }
 }
 
 
 /*
- * Wait for confirm
- *  Type = 1         choices Yes ---
- *  Type = 2         choices Yes  No
- *  Pid = true       run PID
- *  Pid = false      no PID
- *  P0, P1, P2, P3   prompts to display or zero
- */
+   Wait for confirm
+    Type = 1         choices Yes ---
+    Type = 2         choices Yes  No
+    Pid = true       run PID
+    Pid = false      no PID
+    P0, P1, P2, P3   prompts to display or zero
+*/
 boolean WaitForConfirm(byte Type, boolean Pid, int P0, int P1, int P2, int P3) {
-  boolean wtBtn = true;
 
-  Buzzer(1, 750);
-  while (wtBtn) {
-    Temperature();
+  BuzzerPlay(BUZZ_Prompt);
+  while (true) {
+    AllThreads();
+
     Input = Temp_MLT;
     Prompt(P0);
     Prompt(P1);
@@ -564,18 +549,18 @@ boolean WaitForConfirm(byte Type, boolean Pid, int P0, int P1, int P2, int P3) {
     if (Pid)
       PID_Heat(true);
 
-    if (btn_Press(ButtonStartPin, 50))
+    if (button_Used(buttonStart, 50))
       return true;
-    if (Type == 2 && btn_Press(ButtonEnterPin, 50))
+    if (Type == 2 && button_Used(buttonEnter, 50))
       return false;
   }
 }
 
 
 /*
- * Returns true  if Yes
- *         false if No
- */
+   Returns true  if Yes
+           false if No
+*/
 boolean Pause() {
 
   bk_heat_off();
@@ -597,13 +582,14 @@ boolean Pause() {
   Prompt(P3_proceed);
 
   while (true) {
-    Temperature();
+    AllThreads();
+
     Prompt(X1Y1_temp);
     Prompt(X11Y1_setpoint);
 
-    if (btn_Press(ButtonStartPin, 50))
+    if (button_Used(buttonStart, 50))
       break;
-    if (btn_Press(ButtonEnterPin, 1500))
+    if (button_Used(buttonEnter, 1500))
       return false;
   }
   Prompt(P0_clear);

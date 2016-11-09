@@ -1,7 +1,7 @@
 #ifndef _BUZZER_H
 #define _BUZZER_H
 
-#define BUZZER_TIME_TOLERANCE   5
+#define BUZZER_TIME_TOLERANCE   3
 
 #define BUZZ_Prompt             0
 #define BUZZ_TempReached        1
@@ -11,10 +11,10 @@
 #define BUZZ_Warn               5
 
 const byte _sound_Prompt[] PROGMEM      = { 2, 2, 5 };
-const byte _sound_TempReached[] PROGMEM = { 5,10, 3,10, 3,10};
-const byte _sound_TimeOut[] PROGMEM     = {10, 1,39, 1,39, 1,39, 1,39,20,20 }; // 5 seconds
-const byte _sound_AddHop[] PROGMEM      = {19,30,10,30,10,30,10,30,10,30,10,30,10,30,10,30,10,30,10,40}; // 10 seconds
-const byte _sound_End[] PROGMEM         = { 2,40, 5 };
+const byte _sound_TempReached[] PROGMEM = { 5, 10, 3, 10, 3, 10};
+const byte _sound_TimeOut[] PROGMEM     = {10, 1, 39, 1, 39, 1, 39, 1, 39, 20, 20 }; // 5 seconds
+const byte _sound_AddHop[] PROGMEM      = {18, 2, 2, 2, 2, 2, 9, 6, 2, 6, 2, 6, 9, 2, 2 , 2 , 2 , 2 , 2};
+const byte _sound_End[] PROGMEM         = { 2, 40, 5 };
 const byte _sound_Warn[] PROGMEM        = { 5, 4, 3, 4, 3, 4 };
 const byte * const _sounds [] PROGMEM = {
   _sound_Prompt,
@@ -51,13 +51,13 @@ void BuzzerThread() {
     if (_numberofNtesToPlay == 0) {
       // finished, stop
       digitalWrite (BuzzControlPin, LOW);
-      _playing=false;
+      _playing = false;
       return;
     }
-    
+
     _buzzingTime = millis();
-    _ptrCurrentNote ++; 
-    _currentPeriod = (word)pgm_read_byte(_ptrCurrentNote) *25;
+    _ptrCurrentNote ++;
+    _currentPeriod = (word)pgm_read_byte(_ptrCurrentNote) * 25;
 
 #if Silent != true
     if (_buzzing) {
@@ -67,25 +67,25 @@ void BuzzerThread() {
     }
 #endif
     _buzzing = ! _buzzing;
-  }   
+  }
 }
 
 
 void BuzzerPlay(byte id) {
-  
-  _currentSound=(byte *)pgm_read_word(&(_sounds[id]));  
-  _numberofNtesToPlay = pgm_read_byte(_currentSound);  
-  _ptrCurrentNote =_currentSound;
 
-  _ptrCurrentNote ++; 
-  _currentPeriod = (word)pgm_read_byte(_ptrCurrentNote) *25;
-  _playing=true;
-  
+  _currentSound = (byte *)pgm_read_word(&(_sounds[id]));
+  _numberofNtesToPlay = pgm_read_byte(_currentSound);
+  _ptrCurrentNote = _currentSound;
+
+  _ptrCurrentNote ++;
+  _currentPeriod = (word)pgm_read_byte(_ptrCurrentNote) * 25;
+  _playing = true;
+
   _buzzingTime = millis();
 #if Silent != true
   digitalWrite (BuzzControlPin, HIGH);
 #endif
-  _buzzing=true;
+  _buzzing = true;
 
 #if DebugBuzzer == true
   Serial.print(F("BufferPlay("));
