@@ -42,10 +42,10 @@
 
 // Serial debugging
 #define DebugPID        false
-#define DebugProcess    true
-#define DebugButton     true
-#define DebugBuzzer     true
-#define DebugReadWrite  true
+#define DebugProcess    false
+#define DebugButton     false
+#define DebugBuzzer     false
+#define DebugReadWrite  false
 #define DebugErrors     true
 
 

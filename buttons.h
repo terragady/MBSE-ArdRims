@@ -81,13 +81,25 @@ byte button_Used(byte Button_no, int msTime) {
       Serial.print(Button_no);
       Serial.print(F(","));
       Serial.print(msTime);
-      Serial.println(F(")"));
+      Serial.println(F(") Yes"));
 #endif
       _pressed[Button_no] = 0;
       return 1;
     }
   } else {
-    if (button_Press(Button_no, msTime)) {
+
+#if DebugButton == true
+    if (_buttons[Button_no]) {
+      Serial.print(F("button_Used("));
+      Serial.print(Button_no);
+      Serial.print(F(","));
+      Serial.print(msTime);
+      Serial.print(F(") = "));
+      Serial.println(_buttons[Button_no]);
+    }
+#endif
+    if (_buttons[Button_no] >= msTime) {
+      _buttons[Button_no] = 0;
       _pressed[Button_no] = 1;
     }
   }
@@ -143,6 +155,7 @@ int Set(int& Set, int Up, int Low, int Step, long Timer, byte Direction) {
   }
 
   if (ButtonPressed == 0 && Direction != DirectionNone) {
+    delay(200);
     if (((millis() - Timer) / 1000) >= 4)
       step_size = (Step * 20);
     else {
@@ -183,6 +196,7 @@ float Set(float& Set, float Up, float Low, float Step, long Timer, byte Directio
   }
 
   if (ButtonPressed == 0 && Direction != DirectionNone) {
+    delay(200);
     if (((millis() - Timer) / 1000) >= 4)
       step_size = (Step * 20.0);
     else {
@@ -223,6 +237,7 @@ byte Set(byte& Set, byte Up, byte Low, byte Step, long Timer, byte Direction) {
   }
 
   if (ButtonPressed == 0 && Direction != DirectionNone) {
+    delay(200);
     if (((millis() - Timer) / 1000) >= 4)
       step_size = (Step * 20);
     else {
