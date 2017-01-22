@@ -706,9 +706,9 @@ void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) 
 */
 #if USE_PumpPWM == true
 
-void PumpControl(byte val) {
+void PumpControl(byte val, byte button) {
   //turns the pump on or off
-  if (button_Used(buttonStart, 50)) {
+  if (button == buttonStart) {
     if (pumpPWM == 0)
       pump_slow(val);
     else if (pumpPWM == 255)
@@ -720,9 +720,9 @@ void PumpControl(byte val) {
 
 #else
 
-void PumpControl() {
+void PumpControl(byte button) {
   //turns the pump on or off
-  if (button_Used(buttonStart, 50))
+  if (button == buttonStart)
     (digitalRead(PumpControlPin) == HIGH) ? pump_hide() : pump_on();
 }
 #endif
@@ -763,7 +763,7 @@ void IodineTest(void) {
     }
 
     Prompt(P3_xxxO);
-    if (button_Used(buttonEnter, 50) || (TimeLeft == 0)) {
+    if ((ReadKey() == buttonEnter) || (TimeLeft == 0)) {
       return;
     }
   }
@@ -789,6 +789,7 @@ void manual_mode() {
 #if USE_PumpPWM == true
   byte _EM_PumpSlow = er_byte(EM_PumpSlow);
 #endif
+  byte    button       = 0;
 
   lcd.clear();
   Prompt(P0_manual);
@@ -808,6 +809,7 @@ void manual_mode() {
 
   while (true) {
     AllThreads();
+    button = ReadKey();
 
     Setpoint = mset_temp;
     Input = Temp_MLT;
@@ -850,16 +852,16 @@ void manual_mode() {
       case 0:          // manual Main menu
 #if USE_HLT == true
         Prompt(P3_HBPQ);
-        if (button_Used(buttonUp, 50))
+        if (button == buttonUp)
           manualMenu = 1;
 #else
         Prompt(P3_xBPQ);
 #endif
-        if (button_Used(buttonDown, 50))
+        if (button == buttonDown)
           manualMenu = 2;
-        if (button_Used(buttonStart, 50))
+        if (button == buttonStart)
           manualMenu = 3;
-        if (button_Used(buttonEnter, 50)) {
+        if (button == buttonEnter) {
           lcd.clear();
           bk_heat_hide();
           pump_hide();
@@ -873,44 +875,44 @@ void manual_mode() {
 #if USE_HLT == true
       case 1:         // manual Hot Liquer Tank
         (hheat) ? Prompt(P3_UD0Q) : Prompt(P3_UD1Q);
-        ReadButton(Direction, Timer);
-        Set(hset_temp, 110, 20, 0.25, Timer, Direction);
+        ReadButton(Direction, Timer, button);
+        Set(hset_temp, 110, 20, 0.25, Timer, Direction, button);
         if ((hset_temp - HLT_SetPoint) > 2) {
           // Increased setting at least 2 degrees
           htempReached = hreachedBeep = false;
         }
-        if (button_Used(buttonStart, 50)) {
+        if (button == buttonStart) {
           (hheat) ? hheat = false : hheat = true;
         }
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           manualMenu = 0;
         break;
 #endif
 
       case 2:          // manual Boil Kettle heater
         (mheat) ? Prompt(P3_UD0Q) : Prompt(P3_UD1Q);
-        ReadButton(Direction, Timer);
-        Set(mset_temp, 110, 20, 0.25, Timer, Direction);
+        ReadButton(Direction, Timer, button);
+        Set(mset_temp, 110, 20, 0.25, Timer, Direction, button);
         if ((mset_temp - Setpoint) > 2) {
           // Increased setting at least 2 degrees
           mtempReached = mreachedBeep = false;
         }
-        if (button_Used(buttonStart, 50)) {
+        if (button == buttonStart) {
           (mheat) ? mheat = false : mheat = true;
         }
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           manualMenu = 0;
         break;
 
       case 3:          // manual Pump control.
 #if USE_PumpPWM == true
         (pumpPWM) ? Prompt(P3_xx0Q) : Prompt(P3_xx1Q);
-        PumpControl(_EM_PumpSlow);
+        PumpControl(_EM_PumpSlow, button);
 #else
         (digitalRead(PumpControlPin) == HIGH) ? Prompt(P3_xx0Q) : Prompt(P3_xx1Q);
-        PumpControl();
+        PumpControl(button);
 #endif
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           manualMenu = 0;
         break;
     }
@@ -943,6 +945,7 @@ void auto_mode() {
 #endif
   byte    LastMashStep         = 0;
   byte    ResumeTime;
+  byte    button;
   boolean Resume               = false;
   boolean tempBoilReached      = false;
   boolean newMinute            = false;
@@ -985,9 +988,6 @@ void auto_mode() {
       MashState = MashNone;
       pumpTime = 0;
       pumpRest = false;
-
-      Temp_MLT = 65.2;
-
     } else {
       ew_byte(EM_AutoModeStarted, 0);
     }
@@ -1072,7 +1072,7 @@ startover:
           } else if (_EM_Whirlpool_6 && ! WP6Done) {
             stageTemp = 66.0;
           } else {
-            stageTemp = word(er_byte(EM_CoolingTemp), er_byte(EM_CoolingTemp + 1)) / 16.0;
+            stageTemp = er_uint(EM_CoolingTemp) / 16.0;
           }
 #if DebugProcess == true
           TimerSet(240 * 60);
@@ -1116,11 +1116,11 @@ startover:
             AllThreads();
             TimerShow(TimeWhirlPool * 60, 6, 2);
             Prompt(P3_SGQO);
-            ReadButton(Direction, Timer);
-            Set((TimeWhirlPool), WhirlpoolMaxtime, 1, 1, Timer, Direction);
-            if (button_Used(buttonStart, 1500))
+            ReadButton(Direction, Timer, button);
+            Set((TimeWhirlPool), WhirlpoolMaxtime, 1, 1, Timer, Direction, button);
+            if ((button == buttonStart) && kp_repeat_count)
               Pwhirl = false;
-            if (button_Used(buttonEnter, 50)) {
+            if (button == buttonEnter) {
               Pwhirl = false;
               TimerSet(TimeWhirlPool * 60);
             }
@@ -1150,7 +1150,7 @@ startover:
           }
           pump_hide();
           ew_byte(EM_AutoModeStarted, 1);
-          Setpoint = (word(er_byte(EM_StageTemp(0)), er_byte(EM_StageTemp(0) + 1)) / 16.0) - 10.0; // 10 below Mash-in
+          Setpoint = (er_uint(EM_StageTemp(0)) / 16.0) - 10.0; // 10 below Mash-in
           lcd.clear();
           break;
       }
@@ -1203,7 +1203,7 @@ startover:
 #endif
         }
         if (MashState == MashNone) {
-          _EM_StageTemp = word(er_byte(EM_StageTemp(CurrentState)), er_byte(EM_StageTemp(CurrentState) + 1)) / 16.0;
+          _EM_StageTemp = er_uint(EM_StageTemp(CurrentState)) / 16.0;
           _EM_StageTime = er_byte(EM_StageTime(CurrentState));
 #if DebugProcess == true
           Debugger = true;
@@ -1346,7 +1346,7 @@ startover:
         DisplayValues(true, (MashState == MashRest), false, false);
 #endif
         Prompt(P3_xxRx);
-        if ((button_Used(buttonStart, 50)) && ! Pause()) {
+        if ((ReadKey() == buttonStart) && ! Pause()) {
           NewState = StageAborted;
         }
         break;
@@ -1376,13 +1376,14 @@ startover:
         (_EM_PumpOnBoil && (Temp_MLT < _EM_PumpMaxTemp)) ? pump_on() : pump_off();
         PID_Heat(false);         // No PID control during boil
 
+        button = ReadKey();
         if (! tempBoilReached) {
           if (Temp_MLT < stageTemp)
             Steady = 0;
           Prompt(P0_stage);
           Prompt(P3_UDRx);
-          ReadButton(Direction, Timer);
-          Set(stageTemp, 105, 90, 1, Timer, Direction);
+          ReadButton(Direction, Timer, button);
+          Set(stageTemp, 105, 90, 1, Timer, Direction, button);
           Setpoint = stageTemp;
           if ((Temp_MLT >= stageTemp) && (Steady > 10)) {
             tempBoilReached = true;
@@ -1403,8 +1404,8 @@ startover:
             Output = 0;
           } else if (Temp_MLT >= stageTemp) {
             Prompt(P3_UDRx);
-            ReadButton(Direction, Timer);
-            Set(Boil_output, 100, 0, 1, Timer, Direction);
+            ReadButton(Direction, Timer, button);
+            Set(Boil_output, 100, 0, 1, Timer, Direction, button);
             Output = Boil_output * 255 / 100;
           } else {
             Prompt(P3_xxRx);
@@ -1451,7 +1452,7 @@ startover:
           Debugger = false;
         }
 #endif
-        if (button_Used(buttonStart, 50) && ! Pause()) {
+        if ((button == buttonStart) && ! Pause()) {
           NewState = StageAborted;
         }
         break;
@@ -1468,18 +1469,19 @@ startover:
           Prompt(P3_UDPQ);
         else
           Prompt(P3_UDxQ);
-        ReadButton(Direction, Timer);
+        button = ReadKey();
+        ReadButton(Direction, Timer, button);
         if (_EM_Whirlpool_7 && ! WP7Done)
-          Set(stageTemp, 77, 71, 0.25, Timer, Direction);
+          Set(stageTemp, 77, 71, 0.25, Timer, Direction, button);
         else if (_EM_Whirlpool_6 && ! WP6Done)
-          Set(stageTemp, 66, 60, 0.25, Timer, Direction);
+          Set(stageTemp, 66, 60, 0.25, Timer, Direction, button);
         else
-          Set(stageTemp, 30, 10, 0.25, Timer, Direction);
+          Set(stageTemp, 30, 10, 0.25, Timer, Direction, button);
         if (Temp_MLT < _EM_PumpMaxTemp)
 #if USE_PumpPWM == true
-          PumpControl(_EM_PumpSlow);
+          PumpControl(_EM_PumpSlow, button);
 #else
-          PumpControl();
+          PumpControl(button);
 #endif
         /*
            Make some noise when aproaching the final cooling temperature.
@@ -1490,7 +1492,7 @@ startover:
         }
         if (Temp_MLT <= stageTemp)
           BuzzerPlay(BUZZ_TempReached);
-        if ((Temp_MLT <= stageTemp) || (button_Used(buttonEnter, 2500))) {
+        if ((Temp_MLT <= stageTemp) || ((ReadKey() == buttonEnter) && (kp_repeat_count > 10))) {
           if (_EM_Whirlpool_7 && ! WP7Done) {
             NewState = StageWhirlpool7;
           } else if (_EM_Whirlpool_6 && ! WP6Done) {
@@ -1548,7 +1550,8 @@ startover:
           PID_Heat(true);     // Setpoint is already set
         DisplayValues((CurrentState != StageWhirlpool2), true, false, false);
         Prompt(P3_xxRx);
-        if (((button_Used(buttonStart, 50)) && (! Pause())) || (TimeLeft == 0)) {
+        button = ReadKey();
+        if (((button == buttonStart) && (! Pause())) || (TimeLeft == 0)) {
           NewState = StageCooling;
           if (CurrentState == StageWhirlpool9)
             WP9Done = true;
@@ -1567,7 +1570,7 @@ startover:
           break;
         }
 #if USE_HLT == true
-        HLT_SetPoint = er_byte(EM_TempHLT);
+        HLT_SetPoint = er_byte(EM_TempHLT) - 10.0;
         if (HLT_SetPoint && ! PromptForMashWater(false)) {
           // No Sparge water, turn it off and continue
           HLT_SetPoint = 0;
@@ -1576,10 +1579,10 @@ startover:
         // Initial questions, delay start etc.
         NewState = StagePrepare;
 #if FakeHeating == true
-        Temp_MLT = (word(er_byte(EM_StageTemp(0)), er_byte(EM_StageTemp(0) + 1)) / 16.0) - 15.0;
+        Temp_MLT = (er_uint(EM_StageTemp(0)) / 16.0) - 15.0;
 #if USE_HLT == true
         if (HLT_SetPoint)
-          Temp_HLT = HLT_SetPoint - 4.2;
+          Temp_HLT = HLT_SetPoint - 18.2;
 #endif
 #endif
         break;
@@ -1603,7 +1606,7 @@ startover:
 
 #if USE_HLT == true
         /*
-           Heat Sparge water if set
+           Heat Sparge water if set to 10 degrees below setpoint
         */
         if (! HLT_SetPoint) {      // If HLT is off, skip heatup.
           NewState = StageDelayStart;
@@ -1614,6 +1617,7 @@ startover:
         if (Temp_HLT >= HLT_SetPoint) {
           BuzzerPlay(BUZZ_Warn);
           NewState = StageDelayStart;
+          HLT_SetPoint = er_byte(EM_TempHLT);  // Set final HLT setpoint.
         }
 #else
         NewState = StageDelayStart;
@@ -1644,7 +1648,7 @@ startover:
         Prompt(P3_xxxO);
         while (true) {
           AllThreads();
-          if (button_Used(buttonEnter, 50))
+          if (ReadKey() == buttonEnter)
             break;
         }
         break;
@@ -1738,6 +1742,7 @@ void setup() {
 
 
 void loop() {
+  byte button = buttonNone;
 
   AllThreads();
 
@@ -1769,15 +1774,16 @@ void loop() {
 #endif
       Prompt(P3_xMAS);
 
-      if (button_Used(buttonDown, 500))
+      button = ReadKey();
+      if (button == buttonDown)
         mainMenu = 1;
-      if (button_Used(buttonStart, 500))
+      if (button == buttonStart)
         mainMenu = 2;
-      if (button_Used(buttonEnter, 500))
+      if (button == buttonEnter)
         mainMenu = 3;
 #if DebugErrors == true
       // "Secret" counters reset
-      if (button_Used(buttonUp, 1000)) {
+      if ((button == buttonUp) && (kp_repeat_count > 0)) {
         lcd.clear();
         byte x = 1;
         byte y = 0;
@@ -1797,9 +1803,10 @@ void loop() {
         BuzzerPlay(BUZZ_Prompt);
         while (true) {
           AllThreads();
-          if (button_Used(buttonEnter, 50))
+          button = ReadKey();
+          if (button == buttonEnter)
             break;
-          if (button_Used(buttonStart, 50)) {
+          if (button == buttonStart) {
             for (byte i = 0; i < 10; i++)
               ew_byte(EM_ErrorNo(i), 0);
             break;

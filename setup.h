@@ -15,25 +15,20 @@ void editByte(const char *label, int address, int max, int min, void (*displayFu
   _displayFunc = displayFunc;
   boolean editLoop = true;
   int labelLength = strlen(label);
-  int offset = 0;
 
-  if (labelLength < 16) {
-    offset = 1;
-  }
-
-  lcd.setCursor(0, 2);
   Prompt(P2_clear);
   Prompt(P3_QQxO);
-  lcd.setCursor(offset, 2);
+  lcd.setCursor(0, 2);
   lcd.print(label);
 
   while (editLoop) {
 
     AllThreads();
-    ReadButton(Direction, Timer);
-    lcd.setCursor((labelLength + 1 + offset), 2);
+    byte button = ReadKey();
+    ReadButton(Direction, Timer, button);
+    lcd.setCursor((labelLength + 1), 2);
     (*_displayFunc)(_editingValue);
-    Set(_editingValue, max, min, 1, Timer, Direction);
+    Set(_editingValue, max, min, 1, Timer, Direction, button);
 
 #if USE_HLT == true
     if (address == EM_TempHLT) {
@@ -49,7 +44,7 @@ void editByte(const char *label, int address, int max, int min, void (*displayFu
     }
 #endif
 
-    if (button_Used(buttonEnter, 50)) {
+    if (button == buttonEnter) {
       editLoop = false;
 #if USE_PumpPWM == true
       if (address == EM_PumpSlow) {
@@ -65,7 +60,7 @@ void editByte(const char *label, int address, int max, int min, void (*displayFu
 
 
 float editTemp(int address, float max, float min) {
-  float   temperature = word(er_byte(address), er_byte(address + 1)) / 16.0;
+  float   temperature = er_uint(address) / 16.0;
   boolean editLoop = true;
 
   Prompt(P3_QQxO);
@@ -73,21 +68,20 @@ float editTemp(int address, float max, float min) {
   while (editLoop) {
 
     AllThreads();
-    ReadButton(Direction, Timer);
+    byte button = ReadKey();
+    ReadButton(Direction, Timer, button);
     lcd.setCursor(13, 2);
     lcd.print(temperature, 2);
     lcd.write((byte)0);
-    Set(temperature, max, min, 0.25, Timer, Direction);
+    Set(temperature, max, min, 0.25, Timer, Direction, button);
 
-    if (button_Used(buttonEnter, 50)) {
+    if (button == buttonEnter) {
       editLoop = false;
     }
   }
 
-  unsigned int w_stagetempSet = int(temperature * 16);
-  ew_byte(address, highByte(w_stagetempSet));
-  ew_byte(address + 1, lowByte(w_stagetempSet));
-  return temperature; 
+  ew_uint(address, int(temperature * 16));
+  return temperature;
 }
 
 
@@ -96,10 +90,10 @@ void editMash(byte index, float max, float min, boolean allowskip) {
   boolean editLoop = true;
   byte    tsave    = er_byte(EM_StageTime(index));
   int     time     = tsave;
+  byte    button;
 
-  lcd.setCursor(0, 2);
   Prompt(P2_clear);
-  lcd.setCursor(1, 2);
+  lcd.setCursor(0, 2);
   lcd.print(stageName[index]);
 
   if (allowskip) {
@@ -110,19 +104,20 @@ void editMash(byte index, float max, float min, boolean allowskip) {
     byte tsave = time;
     while (editLoop) {
       AllThreads();
+      button = ReadKey();
       lcd.setCursor(13, 2);
 #if langNL == true
       (tsave) ? lcd.print(F("    Ja")) : lcd.print(F("   Nee"));
 #else
       (tsave) ? lcd.print(F("   Run")) : lcd.print(F("  Skip"));
 #endif
-      if (button_Used(buttonStart, 50)) {
+      if (button == buttonStart) {
         if (tsave)
           tsave = 0;
         else
           tsave = 1;
       }
-      if (button_Used(buttonEnter, 50)) {
+      if (button == buttonEnter) {
         editLoop = false;
       }
     }
@@ -147,18 +142,19 @@ void editMash(byte index, float max, float min, boolean allowskip) {
       editLoop = true;    // Enables step, edit steptime
     }
 
+    lcd.setCursor(13, 2);
+    lcd.print("      ");
+
     while (editLoop) {
 
       AllThreads();
-      ReadButton(Direction, Timer);
-      lcd.setCursor(13, 2);
-      lcd.print("      ");
+      button = ReadKey();
+      ReadButton(Direction, Timer, button);
+      Set(time, 140, 1, 1, Timer, Direction, button);
       lcd.setCursor(13, 2);
       displayTime(time);
-      Serial.println(time);
-      Set(time, 140, 1, 1, Timer, Direction);
 
-      if (button_Used(buttonEnter, 50)) {
+      if (button == buttonEnter) {
         editLoop = false;
       }
     }
@@ -170,39 +166,28 @@ void editMash(byte index, float max, float min, boolean allowskip) {
 
 
 void displayOffset100(int data) {
-  float fvalue = (float)data - 100.0;
-
-  FormatNumber(fvalue, 1);
-  lcd.print(fvalue, 0);
+  LCD_Float(data - 100.0, 5, 1);
 }
 
 
-void displayMultiply250(int data) {
-  float fvalue = (float)data * 250.0;
 
-  FormatNumber(fvalue, 1);
-  lcd.print(fvalue, 0);
+void displayMultiply250(int data) {
+  LCD_Integer(data * 250, 4);
 }
 
 
 
 void displayKi(int data) {
-  float fvalue = (float)data / 1000.0;
-
-  FormatNumber(fvalue, -3);
-  lcd.print(fvalue, 3);
+  LCD_Float(data / 1000.0, 6, 3);
 }
 
 
 
 void displayPercentage(int data) {
-  float fvalue = (float)data;
-
-  //FormatNumber(fvalue, 0);
-  lcd.print(" ");
-  lcd.print(fvalue, 0);
+  LCD_Integer(data, 3);
   lcd.print(F("%"));
 }
+
 
 
 void displayTempShift50Divide10(int data) {
@@ -214,24 +199,19 @@ void displayTempShift50Divide10(int data) {
 }
 
 
-void displaySimpleTemperature(int data) {
-  float fvalue = (float)data;
 
-  //FormatNumber(fvalue, 0);
-  //lcd.print(" ");
-  lcd.print(fvalue, 0);
+void displaySimpleTemperature(int data) {
+  LCD_Integer(data, 3);
   lcd.write((byte)0);
 }
 
 
-void displayTime(int data) {
-  float fvalue = (float)data;
 
-  //FormatNumber(fvalue, 1);
-  //lcd.print(" ");
-  lcd.print(fvalue, 0);
+void displayTime(int data) {
+  LCD_Integer(data, 3);
   lcd.print(F("m"));
 }
+
 
 
 void displayTimeOff(int data) {
@@ -239,26 +219,25 @@ void displayTimeOff(int data) {
     displayTime(data);
   else
 #if langNL == true
-    lcd.print(F("UIT"));
+    lcd.print(F(" UIT"));
 #else
-    lcd.print(F("OFF"));
+    lcd.print(F(" OFF"));
 #endif
 }
 
 
-void displayNumber(int data) {
-  float fvalue = (float)data;
 
-  //FormatNumber(fvalue, 1);
-  lcd.print(fvalue, 0);
+void displayNumber(int data) {
+  LCD_Integer(data, 3);
 }
+
 
 
 void displayOnOff(int value) {
 #if langNL == true
   value ? lcd.print(F("AAN")) : lcd.print(F("UIT"));
 #else
-  value ? lcd.print(F("ON")) : lcd.print(F("OFF"));
+  value ? lcd.print(F("ON ")) : lcd.print(F("OFF"));
 #endif
 }
 
@@ -274,28 +253,28 @@ void displayYesNo(int value) {
 
 void set_PID(void) {
 #if langNL == true
-  editByte("Constant kP ", EM_PID_kP, 200, 100, & displayOffset100);
-  editByte("Constant kI ", EM_PID_kI, 250,   0, & displayKi);
-  editByte("Constant kD ", EM_PID_kD, 200, 100, & displayOffset100);
-  editByte("SampleTime  ", EM_SampleTime, 3500 / 250, 1000 / 250, & displayMultiply250);
+  editByte("Constant kP" , EM_PID_kP, 200, 100, & displayOffset100);
+  editByte("Constant kI" , EM_PID_kI, 250,   0, & displayKi);
+  editByte("Constant kD" , EM_PID_kD, 200, 100, & displayOffset100);
+  editByte("SampleTime"  , EM_SampleTime, 3500 / 250, 1000 / 250, & displayMultiply250);
   editByte("WindowSet ms", EM_WindowSize, 7500 / 250, 3000 / 250, & displayMultiply250);
-  editByte("Log Factor  ", EM_LogFactor, 20, 0, & displayNumber);
-  editByte("Temp Offset ", EM_TempOffset, 100, 0, & displayTempShift50Divide10);
+  editByte("Log Factor"  , EM_LogFactor, 20, 0, & displayNumber);
+  editByte("Temp Offset" , EM_TempOffset, 100, 0, & displayTempShift50Divide10);
   editByte("Heat in Boil", EM_BoilHeat, 100, 20, & displayPercentage);
 #if USE_HLT == true
-  editByte("HLT temp.   ", EM_TempHLT, 95, 0, & displaySimpleTemperature);
+  editByte("HLT temp."   , EM_TempHLT, 95, 0, & displaySimpleTemperature);
 #endif
 #else
-  editByte("Constant kP ", EM_PID_kP, 200, 100, & displayOffset100);
-  editByte("Constant kI ", EM_PID_kI, 250,   0, & displayKi);
-  editByte("Constant kD ", EM_PID_kD, 200, 100, & displayOffset100);
-  editByte("SampleTime  ", EM_SampleTime, 3500 / 250, 1000 / 250, & displayMultiply250);
+  editByte("Constant kP" , EM_PID_kP, 200, 100, & displayOffset100);
+  editByte("Constant kI" , EM_PID_kI, 250,   0, & displayKi);
+  editByte("Constant kD" , EM_PID_kD, 200, 100, & displayOffset100);
+  editByte("SampleTime"  , EM_SampleTime, 3500 / 250, 1000 / 250, & displayMultiply250);
   editByte("WindowSet ms", EM_WindowSize, 7500 / 250, 3000 / 250, & displayMultiply250);
-  editByte("Log Factor  ", EM_LogFactor, 20, 0, & displayNumber);
-  editByte("Temp Offset ", EM_TempOffset, 100, 0, & displayTempShift50Divide10);
+  editByte("Log Factor"  , EM_LogFactor, 20, 0, & displayNumber);
+  editByte("Temp Offset" , EM_TempOffset, 100, 0, & displayTempShift50Divide10);
   editByte("Heat in Boil", EM_BoilHeat, 100, 20, & displayPercentage);
 #if USE_HLT == true
-  editByte("HLT temp.   ", EM_TempHLT, 95, 0, & displaySimpleTemperature);
+  editByte("HLT temp."   , EM_TempHLT, 95, 0, & displaySimpleTemperature);
 #endif
 #endif
 }
@@ -304,7 +283,7 @@ void set_PID(void) {
 void set_Unit(void) {
   //        23456789012
 #if langNL == true
-  editByte("Kook Temperatuur" , EM_BoilTemperature, 105, 60, & displaySimpleTemperature);
+  editByte("Kook Temperatuu"  , EM_BoilTemperature, 105, 60, & displaySimpleTemperature);
   editByte("Pomp Cyclus"      , EM_PumpCycle, 15, 5, & displayTime);
   editByte("Pomp Rust"        , EM_PumpRest, 5, 0, & displayTime);
 #if USE_PumpPWM == true
@@ -321,7 +300,7 @@ void set_Unit(void) {
   editByte("Skip Jodiumtest"  , EM_SkipIodine, 1, 0, & displayYesNo);
   editByte("Jodium Tijd"      , EM_IodoneTime, 90, 0, & displayTime);
 #else
-  editByte("Boil Temperature" , EM_BoilTemperature, 105, 90, & displaySimpleTemperature);
+  editByte("Boil Temperatur"  , EM_BoilTemperature, 105, 90, & displaySimpleTemperature);
   editByte("Pump Cycle"       , EM_PumpCycle, 15, 5, & displayTime);
   editByte("Pump Rest"        , EM_PumpRest, 5, 0, & displayTime);
 #if USE_PumpPWM == true
@@ -369,9 +348,9 @@ void set_Auto_Boil(void) {
   */
   editByte(stageName[8], EM_BoilTime, 240, 10, & displayTime);
 #if langNL == true
-  editByte(" Aantal Hopgiften", EM_NumberOfHops, 10, 0, & displayNumber);
+  editByte("Aantal Hopgiften", EM_NumberOfHops, 10, 0, & displayNumber);
 #else
-  editByte(" Nr. Of Hops adds", EM_NumberOfHops, 10, 0, & displayNumber);
+  editByte("Nr. Of Hops adds", EM_NumberOfHops, 10, 0, & displayNumber);
 #endif
 
   if (er_byte(EM_NumberOfHops)) {
@@ -394,15 +373,15 @@ void set_Auto_Boil(void) {
 
   // 4 Whirlpool settings
 #if langNL == true
-  editByte("Whirlpool 93+", EM_Whirlpool_9 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool 93+"  , EM_Whirlpool_9 , WhirlpoolMaxtime, 0, & displayTimeOff);
   editByte("Whirlpool 71-77", EM_Whirlpool_7 , WhirlpoolMaxtime, 0, & displayTimeOff);
   editByte("Whirlpool 60-66", EM_Whirlpool_6 , WhirlpoolMaxtime, 0, & displayTimeOff);
-  editByte("Whirlpool Koud", EM_Whirlpool_2 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool Koud" , EM_Whirlpool_2 , WhirlpoolMaxtime, 0, & displayTimeOff);
 #else
-  editByte("Whirlpool 93+", EM_Whirlpool_9 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool 93+"  , EM_Whirlpool_9 , WhirlpoolMaxtime, 0, & displayTimeOff);
   editByte("Whirlpool 71-77", EM_Whirlpool_7 , WhirlpoolMaxtime, 0, & displayTimeOff);
   editByte("Whirlpool 60-66", EM_Whirlpool_6 , WhirlpoolMaxtime, 0, & displayTimeOff);
-  editByte("Whirlpool Cold", EM_Whirlpool_2 , WhirlpoolMaxtime, 0, & displayTimeOff);
+  editByte("Whirlpool Cold" , EM_Whirlpool_2 , WhirlpoolMaxtime, 0, & displayTimeOff);
 #endif
 }
 
@@ -491,10 +470,10 @@ void Recipe(byte numRecipe, byte Type) {
 
 
 
-void RecipeSelect(byte & numRecipe, byte RecipeUp, byte RecipeDown) {
+void RecipeSelect(byte & numRecipe, byte RecipeUp, byte RecipeDown, byte button) {
   Recipe(numRecipe, 0);
-  ReadButton(Direction, Timer);
-  Set(numRecipe, RecipeUp, RecipeDown, 1, Timer, Direction);
+  ReadButton(Direction, Timer, button);
+  Set(numRecipe, RecipeUp, RecipeDown, 1, Timer, Direction, button);
 }
 
 
@@ -544,12 +523,13 @@ void RecipeLoad(void) {
 
   while (true) {
     AllThreads();
-    RecipeSelect(numRecipe, RecipeUp, RecipeDown);
+    byte button = ReadKey();
+    RecipeSelect(numRecipe, RecipeUp, RecipeDown, button);
 
-    if (button_Used(buttonStart, 50)) { // Quit
+    if (button == buttonStart) { // Quit
       return;
     }
-    if (button_Used(buttonEnter, 50)) { // Ok
+    if (button == buttonEnter) { // Ok
       Prompt(P1_clear);
 
       int Da = EM_RecipeData(numRecipe - 1);
@@ -587,12 +567,13 @@ void RecipeSave(void) {
 
   while (true) {
     AllThreads();
-    RecipeSelect(numRecipe, RecipeUp, RecipeDown);
+    byte button = ReadKey();
+    RecipeSelect(numRecipe, RecipeUp, RecipeDown, button);
 
-    if (button_Used(buttonStart, 50)) { // Quit
+    if (button == buttonStart) { // Quit
       return;
     }
-    if (button_Used(buttonEnter, 50)) { // Ok
+    if (button == buttonEnter) { // Ok
 #if langNL == true
       if (RecipePrompt("Opslaan Recept", numRecipe)) {
 #else
@@ -623,6 +604,7 @@ void RecipeSave(void) {
 
 void RecipeSaveAs(void) {
   byte numRecipe = 0;
+  byte button;
 
   /*
      Search empty slot
@@ -666,12 +648,13 @@ void RecipeSaveAs(void) {
   // a-z  97 to 122
   while (pos < 10) {
     AllThreads();
+    button = ReadKey();
     lcd.setCursor(pos + 7, 2);
     lcd.print((char)NameRecipe[pos]);
     lcd.blink();
 
-    ReadButton(Direction, Timer);
-    Set(NameRecipe[pos], 122, 32, 1, Timer, Direction);
+    ReadButton(Direction, Timer, button);
+    Set(NameRecipe[pos], 122, 32, 1, Timer, Direction, button);
 
     if ((NameRecipe[pos] > 32 && NameRecipe[pos] < 48) && Direction == DirectionUp)
       NameRecipe[pos] = 48;
@@ -683,23 +666,20 @@ void RecipeSaveAs(void) {
     if ( NameRecipe[pos] < 48 && Direction == DirectionDown)
       NameRecipe[pos] = 32;
 
-    if (button_Used(buttonEnter, 50)) {
+    if (button == buttonEnter) {
       pos++;
       NameRecipe[pos] = 97;
     }
 
-    if ((digitalRead(ButtonDownPin) == 0) && (digitalRead(ButtonUpPin) == 0)) {
-      delay(350);
-      if ((digitalRead(ButtonDownPin) == 0) && (digitalRead(ButtonUpPin) == 0)) {
-        for (byte j = pos; j < 10; j++) {
-          NameRecipe[pos] = 32;
-          pos++;
-        } pos = 9;
-      }
+    if (button == buttonEscape) {
+      for (byte j = pos; j < 10; j++) {
+        NameRecipe[pos] = 32;
+        pos++;
+      } pos = 9;
     }
 
     // Backspace (sort of).
-    if (button_Used(buttonStart, 50)) {
+    if (button == buttonStart) {
       if (pos > 0)
         pos--;
     }
@@ -750,12 +730,13 @@ void RecipeDelete(void) {
 
   while (true) {
     AllThreads();
-    RecipeSelect(numRecipe, RecipeUp, RecipeDown);
+    byte button = ReadKey();
+    RecipeSelect(numRecipe, RecipeUp, RecipeDown, button);
 
-    if (button_Used(buttonStart, 50)) { // Quit
+    if (button == buttonStart) { // Quit
       return;
     }
-    if (button_Used(buttonEnter, 50)) { // Ok
+    if (button == buttonEnter) { // Ok
 #if langNL == true
       if (RecipePrompt("Wissen Recept", numRecipe)) {
 #else
@@ -811,6 +792,7 @@ void set_Recipes() {
   while (true) {
 
     AllThreads();
+    byte button = ReadKey();
     lcd.setCursor(1, 2);
     switch (recipeMenu) {
       case 0:
@@ -820,9 +802,9 @@ void set_Recipes() {
         lcd.print(F("   Recept Load    "));
 #endif
         Prompt(P3_xGQO);
-        if (button_Used(buttonDown, 50))
+        if (button == buttonDown)
           recipeMenu = 1;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           RecipeLoad();
         break;
 
@@ -833,11 +815,11 @@ void set_Recipes() {
         lcd.print(F("   Recipe Save    "));
 #endif
         Prompt(P3_SGQO);
-        if (button_Used(buttonDown, 50))
+        if (button == buttonDown)
           recipeMenu = 2;
-        if (button_Used(buttonUp, 50))
+        if (button == buttonUp)
           recipeMenu = 0;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           RecipeSave();
         break;
 
@@ -848,11 +830,11 @@ void set_Recipes() {
         lcd.print(F("  Recipe Save as  "));
 #endif
         Prompt(P3_SGQO);
-        if (button_Used(buttonDown, 50))
+        if (button == buttonDown)
           recipeMenu = 3;
-        if (button_Used(buttonUp, 50))
+        if (button == buttonUp)
           recipeMenu = 1;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           RecipeSaveAs();
         break;
 
@@ -863,11 +845,11 @@ void set_Recipes() {
         lcd.print(F("   Recipe Erase   "));
 #endif
         Prompt(P3_SGQO);
-        if (button_Used(buttonDown, 50))
+        if (button == buttonDown)
           recipeMenu = 4;
-        if (button_Used(buttonUp, 50))
+        if (button == buttonUp)
           recipeMenu = 2;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           RecipeDelete();
         break;
 
@@ -878,13 +860,13 @@ void set_Recipes() {
         lcd.print(F("   Initialise     "));
 #endif
         Prompt(P3_SxQO);
-        if (button_Used(buttonUp, 50))
+        if (button == buttonUp)
           recipeMenu = 3;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           InitRecipes();
         break;
     }
-    if (button_Used(buttonStart, 50)) {
+    if (button == buttonStart) {
       lcd.clear();
       Prompt(P0_banner);
       return;
@@ -896,9 +878,11 @@ void set_Recipes() {
 
 void setup_mode() {
   byte setupMenu = 0;
+  byte button;
 
   while (true) {
     AllThreads();
+    button = ReadKey();
     Prompt(P0_setup);
     Prompt(P2_clear);
     lcd.setCursor(1, 1);
@@ -912,9 +896,9 @@ void setup_mode() {
         lcd.print(F("  PID Parameters  "));
 #endif
         Prompt(P3_xGQO);
-        if (button_Used(buttonDown, 50))
+        if (button == buttonDown)
           setupMenu = 1;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           set_PID();
         break;
 
@@ -925,11 +909,11 @@ void setup_mode() {
         lcd.print(F(" Unit Parameters  "));
 #endif
         Prompt(P3_SGQO);
-        if (button_Used(buttonUp, 50))
+        if (button == buttonUp)
           setupMenu = 0;
-        if (button_Used(buttonDown, 50))
+        if (button == buttonDown)
           setupMenu = 2;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           set_Unit();
         break;
 
@@ -940,11 +924,11 @@ void setup_mode() {
         lcd.print(F(" Mash Automation  "));
 #endif
         Prompt(P3_SGQO);
-        if (button_Used(buttonUp, 50))
+        if (button == buttonUp)
           setupMenu = 1;
-        if (button_Used(buttonDown, 50))
+        if (button == buttonDown)
           setupMenu = 3;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           set_Auto_Mash();
         break;
 
@@ -955,11 +939,11 @@ void setup_mode() {
         lcd.print(F(" Boil Automation  "));
 #endif
         Prompt(P3_SGQO);
-        if (button_Used(buttonUp, 50))
+        if (button == buttonUp)
           setupMenu = 2;
-        if (button_Used(buttonDown, 50))
+        if (button == buttonDown)
           setupMenu = 4;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           set_Auto_Boil();
         break;
 
@@ -971,13 +955,13 @@ void setup_mode() {
         lcd.print(F("Recipe Management "));
 #endif
         Prompt(P3_SxQO);
-        if (button_Used(buttonUp, 50))
+        if (button == buttonUp)
           setupMenu = 3;
-        if (button_Used(buttonEnter, 50))
+        if (button == buttonEnter)
           set_Recipes();
         break;
     }
-    if (button_Used(buttonStart, 50)) {
+    if (button == buttonStart) {
       lcd.clear();
       return;
     }

@@ -103,6 +103,25 @@ const char *stageName[] = { "Mash In   ",
 #endif
 
 
+
+void LCD_Integer(int value, int digits) {
+  char mymsg[8];
+
+  dtostrf(value, digits, 0, mymsg);
+  lcd.print(mymsg);
+}
+
+
+
+void LCD_Float(float value, int digits, int decimals) {
+  char mymsg[21];
+
+  dtostrf(value, digits, decimals, mymsg);
+  lcd.print(mymsg);
+}
+
+
+
 void LCDSpace (byte Num) {
   for (byte i = 0; i < Num; i++)
     lcd.write(32);
@@ -142,7 +161,7 @@ void Prompt(int Pmpt) {
   if ((Pmpt >= 100) && (Pmpt < 200)) {
     lcd.setCursor(0, 0);
   } else if ((Pmpt >= 200) && (Pmpt < 300)) {
-    lcd.setCursor(1, 1);
+    lcd.setCursor(0, 1);
   } else if ((Pmpt >= 300) && (Pmpt < 400)) {
     lcd.setCursor(0, 2);
   } else if ((Pmpt >= 400) && (Pmpt < 500)) {
@@ -271,23 +290,23 @@ void Prompt(int Pmpt) {
       return;
     case P2_malt_add:
 #if langNL == true
-      lcd.print(F("    Mout Storten   "));
+      lcd.print(F("    Mout Storten    "));
 #else
-      lcd.print(F("      Add Malt     "));
+      lcd.print(F("      Add Malt      "));
 #endif
       return;
     case P2_malt_rem:
 #if langNL == true
-      lcd.print(F("  Mout Verwijderen "));
+      lcd.print(F("  Mout Verwijderen  "));
 #else
-      lcd.print(F("    Remove Malt    "));
+      lcd.print(F("    Remove Malt     "));
 #endif
       return;
     case P2_norecipe:
 #if langNL == true
-      lcd.print(F("   GEEN RECEPTEN!  "));
+      lcd.print(F("   GEEN RECEPTEN!   "));
 #else
-      lcd.print(F("    NO  RECIPES!   "));
+      lcd.print(F("    NO  RECIPES!    "));
 #endif
       return;
 
@@ -518,9 +537,10 @@ boolean PromptForMashWater(boolean Mash) {
   Prompt(P3_proceed);
   while (true) {
     AllThreads();
-    if (button_Used(buttonStart, 50))
+    byte button = ReadKey();
+    if (button == buttonStart)
       return true;
-    if (button_Used(buttonEnter, 50))
+    if (button == buttonEnter)
       return false;
   }
 }
@@ -539,6 +559,7 @@ boolean WaitForConfirm(byte Type, boolean Pid, int P0, int P1, int P2, int P3) {
   BuzzerPlay(BUZZ_Prompt);
   while (true) {
     AllThreads();
+    byte button = ReadKey();
 
     Input = Temp_MLT;
     Prompt(P0);
@@ -549,9 +570,9 @@ boolean WaitForConfirm(byte Type, boolean Pid, int P0, int P1, int P2, int P3) {
     if (Pid)
       PID_Heat(true);
 
-    if (button_Used(buttonStart, 50))
+    if (button == buttonStart)
       return true;
-    if (Type == 2 && button_Used(buttonEnter, 50))
+    if (Type == 2 && (button == buttonEnter))
       return false;
   }
 }
@@ -583,13 +604,14 @@ boolean Pause() {
 
   while (true) {
     AllThreads();
+    byte button = ReadKey();
 
     Prompt(X1Y1_temp);
     Prompt(X11Y1_setpoint);
 
-    if (button_Used(buttonStart, 50))
+    if (button == buttonStart)
       break;
-    if (button_Used(buttonEnter, 1500))
+    if ((button == buttonEnter) && kp_repeat_count)
       return false;
   }
   Prompt(P0_clear);

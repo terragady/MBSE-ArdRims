@@ -8,12 +8,12 @@ unsigned long Steady;
 
 
 /*
- * Should be called as much as possible
- */
+   Should be called as much as possible
+*/
 void TimerRun() {
 
   gCurrentTimeInMS = millis();
-  
+
   if (_seconds != myTimer.readTimer()) {
     _seconds = myTimer.readTimer();
 
@@ -26,7 +26,7 @@ void TimerRun() {
         BuzzerPlay(BUZZ_TimeOut);
       if ((TimeLeft % 60) == 0)
         pumpTime++;
-    }    
+    }
   }
 
 }
