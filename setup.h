@@ -191,10 +191,7 @@ void displayPercentage(int data) {
 
 
 void displayTempShift50Divide10(int data) {
-  float fvalue = ((float)data - 50.0) / 10.0;
-
-  FormatNumber(fvalue, -2);
-  lcd.print(fvalue, 1);
+  LCD_Float((float)(data - 50.0) / 10.0, 4,1);
   lcd.write((byte)0);
 }
 

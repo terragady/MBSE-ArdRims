@@ -128,32 +128,11 @@ void LCDSpace (byte Num) {
 }
 
 
-void FormatNumber(float Numero, int Offset) {
-  byte Space = 0;
-  if (Numero <= -100.0)
-    Space = 0;
-  if (Numero <=  -10.0 && Numero > -100.0)
-    Space = 1;
-  if (Numero <     0.0 && Numero >  -10.0)
-    Space = 2;
-  if (Numero <    10.0 && Numero >=   0.0)
-    Space = 3;
-  if (Numero <   100.0 && Numero >=  10.0)
-    Space = 2;
-  if (Numero <  1000.0 && Numero >= 100.0)
-    Space = 1;
-  if (Numero >= 1000.0)
-    Space = 0;
-
-  LCDSpace(Space + Offset);
-}
-
 
 /*
    LCD messages
 */
 void Prompt(int Pmpt) {
-  float Temp;
 
   if (Pmpt == 0)
     return;
@@ -468,28 +447,21 @@ void Prompt(int Pmpt) {
         lcd.setCursor(6, 1);
       else
         lcd.setCursor(1, 1);
-      Temp = Temp_MLT;
-      FormatNumber(Temp, -1);
-      lcd.print(Temp, 2);
+      LCD_Float(Temp_MLT, 6, 2);
       lcd.write((byte)0);
-      lcd.write(32);
       return;
 
     case X11Y1_setpoint:
       lcd.setCursor(11, 1);
-      Temp = Setpoint;
-      FormatNumber(Temp, -1);
-      lcd.print(Temp, 2);
+      LCD_Float(Setpoint, 6, 2);
       lcd.write(2);
       return;
 
     case X1Y2_pwm:
       lcd.setCursor(1, 2);
       lcd.print(F("PWM="));
-      Temp = (Output * 100 ) / 255;
-      FormatNumber(Temp, -1);
-      lcd.print(Temp, 0);      //Display output%
-      lcd.print(F("% "));
+      LCD_Integer(int((Output * 100 ) / 255), 3);
+      lcd.print(F("%"));
       return;
 
     case X1Y2_blank:
@@ -508,20 +480,15 @@ void Prompt(int Pmpt) {
         lcd.setCursor(6, 2);
       else
         lcd.setCursor(1, 2);
-      Temp = Temp_HLT;
-      FormatNumber(Temp, -1);
-      lcd.print(Temp, 2);
+      LCD_Float(Temp_HLT, 6, 2);
       lcd.write((byte)0);
       lcd.write(32);
       return;
 
     case X11Y2_setpoint:
       lcd.setCursor(11, 2);
-      Temp = HLT_SetPoint;
-      FormatNumber(Temp, -1);
-      lcd.print(Temp, 2);
+      LCD_Float(HLT_SetPoint, 6, 2);
       lcd.write(2);
-      lcd.write(32);
       return;
 #endif
   }
