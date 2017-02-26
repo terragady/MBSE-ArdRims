@@ -58,13 +58,20 @@
 #define  X6Y1_temp       501
 #define  X1Y1_temp       502
 #define  X11Y1_setpoint  503
-#define  X1Y2_pwm        504
-#define  X1Y2_blank      505
-#define  X11Y2_timer     506
+
+#define  X1Y2_blank      504
+#define  X1Y2_timer      505
+
+#define  X11Y2_blank     506
+#define  X11Y2_pwm       507
+#define  X11Y2_timer     508
+
+
 #if USE_HLT == true
-#define  X6Y2_temp       507
-#define  X1Y2_temp       508
-#define  X11Y2_setpoint  509
+#define  X6Y2_temp       509
+#define  X1Y2_temp       510
+#define  X1Y2_setpoint   511
+#define  X11Y2_setpoint  512
 #endif
 
 
@@ -457,11 +464,16 @@ void Prompt(int Pmpt) {
       lcd.write(2);
       return;
 
-    case X1Y2_pwm:
-      lcd.setCursor(1, 2);
+    case X11Y2_pwm:
+      lcd.setCursor(11, 2);
       lcd.print(F("PWM="));
       LCD_Integer(int((Output * 100 ) / 255), 3);
       lcd.print(F("%"));
+      return;
+
+    case X11Y2_blank:
+      lcd.setCursor(11, 2);
+      LCDSpace(9);
       return;
 
     case X1Y2_blank:
@@ -469,8 +481,12 @@ void Prompt(int Pmpt) {
       LCDSpace(9);
       return;
 
+    case X1Y2_timer:
+      (TimeUp) ? TimerShow(TimeSpent, 1, 2) : TimerShow(TimeLeft, 1, 2);
+      return;
+      
     case X11Y2_timer:
-      TimerShow(TimeLeft, 11, 2);
+      (TimeUp) ? TimerShow(TimeSpent, 11, 2) : TimerShow(TimeLeft, 11, 2);
       return;
 
 #if USE_HLT == true
@@ -486,11 +502,17 @@ void Prompt(int Pmpt) {
       return;
 
     case X11Y2_setpoint:
-      lcd.setCursor(11, 2);
+    case X1Y2_setpoint:
+      (Pmpt == X11Y2_setpoint) ? lcd.setCursor(11, 2) : lcd.setCursor(1, 2);
       LCD_Float(HLT_SetPoint, 6, 2);
       lcd.write(2);
       return;
 #endif
+
+    default:
+      Serial.print("Unknown prompt ");
+      Serial.println(Pmpt);
+      break;
   }
 }
 

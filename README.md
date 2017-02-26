@@ -15,10 +15,10 @@ Differences between other systems and MBSE-ArdRims:
 2.  20x4 displays only.
 3.  During Mash stages, the PID is allways active, no override to full power
     when temperature is too far off.
-4.  Logarithmic PWM power regulation. If the PID wants 1% power, real effective
-    power can be set higher because 1% electric power does nothing. In the setup
-    this is called "Log Factor". Can be set between 0 (nothing) and 20 (most)
-    extra power boost. Because of this, PID regulation works much better.
+4.  The PID has a larger setup range, P from 0 to 2048, I from 0 to 128 and
+    D from 0 to 32768. There are also decimals to set. Because of this the
+    PID finally works as it was supposed to work. The default values for the
+    PID are: P = 150, I = 1.5 and D = 15000.
 5.  Mash steps setup is more user friendly. You first set steps that can be
     skipped on or off, and only if "on" you can set the parameters.
 6.  No PID control during boil, heatup is always 100%, and when the boil temp
@@ -36,7 +36,8 @@ Differences between other systems and MBSE-ArdRims:
     wire bus to control a Hot Liquer Tank. Heating is timeshared with the
     normal Mash heater. USE_HLT true/false.
 10. Improved and more robust 1-wire bus reads for the sensor(s).
-11. No timer control in manual mode. Use the wall clock.
+11. In manual mode if the MLT temperature is reached, a clock will start and
+    show the running time.
 12. Automatic mode is now state controlled. This saves memory and the code is
     better readable.
 13. EEPROM storage has a signature and revision marks, so upgrades to any new
@@ -56,6 +57,9 @@ Differences between other systems and MBSE-ArdRims:
     electronic power circuit. waarmee de pomp snelheid
     electronisch geregeld kan worden. Default false, dus voor relais. Indien
     true moet je zorgen voor een elektronische vermogens regeling.
+20. The last used temperatures in manual mode will be remembered for the next
+    time you use manual mode.
+
 
 Next to the standard Arduino libraries you need to install the following extra
 libraries:

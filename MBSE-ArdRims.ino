@@ -208,24 +208,24 @@ boolean HLT_is_On = false;
 boolean HLT_block = false;
 #endif
 boolean pumpRest;
+boolean TimeUp = false;
 
 
 byte    mainMenu = 0;
 byte    stageTime;
 byte    hopTime;
 byte    CurrentState = StageNothing;
-byte    WindowSize;
 byte    Direction;
 byte    Boil_output;
 byte    nmbrHops;
 byte    hopAdd;
 byte    MashState;
-byte    LogFactor = 0;
 byte    pumpTime;
 #if USE_PumpPWM == true
 byte    pumpPWM = 0;
 #endif
 
+int     SampleTime;
 
 double  Input;
 double  Output;
@@ -233,6 +233,7 @@ double  Setpoint;
 
 #if FakeHeating == true
 float   Temp_MLT = 18.90;
+float   Fake_MLT = 18.90;
 float   Plate_MLT = 18.90;
 #else
 float   Temp_MLT = 0.0;
@@ -242,6 +243,7 @@ float   stageTemp;
 #if USE_HLT == true
 #if FakeHeating == true
 float   Temp_HLT = 18.70;
+float   Fake_HLT = 18.70;
 float   Plate_HLT = 18.70;
 #else
 float   Temp_HLT = 0.0;
@@ -417,34 +419,36 @@ void Temperature() {
     if (Plate_MLT < 250.0)
       Plate_MLT += (gCurrentTimeInMS - FakeHeatLastInMS) * 0.001;   // Simulate plate upto 250 degrees
   } else {
-    if (Plate_MLT > Temp_MLT)
-      Plate_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00002 * (Plate_MLT - Temp_MLT);
+    if (Plate_MLT > Fake_MLT)
+      Plate_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00002 * (Plate_MLT - Fake_MLT);
   }
   // If plate is hotter then the water with a offset so that cooling later works.
-  if (Plate_MLT > (Temp_MLT + 5.0)) {
-    if (Temp_MLT < 100.05)
-      Temp_MLT += (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000001 * (Plate_MLT - Temp_MLT);
+  if (Plate_MLT > (Fake_MLT + 5.0)) {
+    if (Fake_MLT < 100.05)
+      Fake_MLT += (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000001 * (Plate_MLT - Fake_MLT);
   }
   // Allways loose heat to the air
-  if (Temp_MLT > 16.0) {
-    Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000010 * (Temp_MLT - 16.0);
+  if (Fake_MLT > 16.0) {
+    Fake_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000010 * (Fake_MLT - 16.0);
 #if USE_PumpPWM == true
     if (pumpPWM > 0) // More heat loss when pump is on
-      Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000007 * (Temp_MLT - 16.0);
+      Fake_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000007 * (Fake_MLT - 16.0);
 #else
     if (digitalRead(PumpControlPin) == HIGH) // More heat loss when pump is on
-      Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000007 * (Temp_MLT - 16.0);
+      Fake_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000007 * (Fake_MLT - 16.0);
 #endif
   }
+  Temp_MLT = (int(Fake_MLT * 16)) / 16.0;
 
 #if USE_HLT == true
   if (digitalRead(HLTControlPin) == HIGH) {
-    if (Temp_HLT < 100.05)
-      Temp_HLT += (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000055;
+    if (Fake_HLT < 100.05)
+      Fake_HLT += (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000055;
   } else {
-    if (Temp_HLT > 16.0)
-      Temp_HLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000006 * (Temp_HLT - 16.0);
+    if (Fake_HLT > 16.0)
+      Fake_HLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.00000006 * (Fake_HLT - 16.0);
   }
+  Temp_HLT = (int(Fake_HLT * 16)) / 16.0;
 #endif
 
   FakeHeatLastInMS = gCurrentTimeInMS;
@@ -468,58 +472,66 @@ void LCDChar(byte X, byte Y, byte C) {
 
 void LoadPIDsettings() {
   // send the PID settings to the PID
-  myPID.SetTunings(er_byte(EM_PID_kP) - 100, (double)(er_byte(EM_PID_kI) / 1000.00), er_byte(EM_PID_kD) - 100);
-  WindowSize = er_byte(EM_WindowSize);
-  myPID.SetSampleTime(er_byte(EM_SampleTime) * 250);
-  LogFactor = er_byte(EM_LogFactor);
+  SampleTime = er_byte(EM_SampleTime) * 250;
+  myPID.SetTunings(er_uint(EM_PID_Kp) / (PID_Kp_div + 0.0), er_uint(EM_PID_Ki) / (PID_Ki_div + 0.0), er_uint(EM_PID_Kd) / (PID_Kd_div + 0.0));
+  myPID.SetSampleTime(SampleTime);
+
   /*
      Initialize the PID
   */
   Output = 0.0;   // Reset internal Iterm.
   myPID.SetMode(MANUAL);
   myPID.SetMode(AUTOMATIC);
+
+#if DebugPID == true
+  DebugTimeSerial();
+  Serial.print("Kp: ");
+  Serial.print(myPID.GetKp(), 3);
+  Serial.print("  Ki: ");
+  Serial.print(myPID.GetKi(), 3);
+  Serial.print("  Kd: ");
+  Serial.print(myPID.GetKd(), 3);
+  Serial.print("  Sampletime: ");
+  Serial.println(SampleTime);
+#endif
 }
 
 
-
+unsigned long lastTime;
 /*
    PID control.
     autoMode = true  - PID is active.
     autoMode = false - Output value is send as slow PWM
 */
 void PID_Heat(boolean autoMode) {
-  double RealPower;
+  boolean rc;
 
   TimerRun();
-  if (autoMode)
-    myPID.Compute();
+  rc = false;
 
-  /*
-     Apply logarithmic factor to the output.
-  */
-  RealPower = int(Output);
-  if (RealPower && LogFactor) {
-    /*
-       Make sure that even 1% Output results in enough power to actually heat the water.
-    */
-    RealPower += ((255 - int(Output)) / (21 - LogFactor));
+  if (autoMode) {
+    rc = myPID.Compute();
+  } else {
+    // Now we must schedule the output window ourself.
+    unsigned long now = millis();
+    unsigned long timeChange = (now - lastTime);
+    if (timeChange >= SampleTime) {
+      lastTime = now;
+      rc = true;
+    }
   }
 
-  if (gCurrentTimeInMS - w_StartTime > (unsigned int) WindowSize * 250) {
-    w_StartTime += (unsigned int)WindowSize * 250; //time to shift the Relay Window
-  }
-  ((RealPower / 255) * ((unsigned int)WindowSize * 250) > gCurrentTimeInMS - w_StartTime) ? bk_heat_on() : bk_heat_off();
+  if (rc) {
+    // Compute() did execute
+    w_StartTime = gCurrentTimeInMS;    // New relay window
 
 #if DebugPID == true
-  static unsigned long LastTimeSpent;
-  if (TimeSpent != LastTimeSpent) {
-    LastTimeSpent = TimeSpent;
     DebugTimeSerial();
     (autoMode) ? Serial.print(F("AUTOMATIC ")) : Serial.print(F("MANUAL    "));
-    Serial.print(F("Mash Temp: "));
-    if (Temp_MLT <  10 && Temp_MLT >= 0) Serial.print(F("  "));
-    if (Temp_MLT < 100 && Temp_MLT >= 10) Serial.print(F(" "));
-    Serial.print(Temp_MLT);
+    Serial.print(F("Input: "));
+    if (Input <  10 && Input >= 0) Serial.print(F("  "));
+    if (Input < 100 && Input >= 10) Serial.print(F(" "));
+    Serial.print(Input, 3);
     Serial.print(F(" Setpoint: "));
     if (Setpoint <  10 && Setpoint >= 0) Serial.print(F("  "));
     if (Setpoint < 100 && Setpoint >= 10) Serial.print(F(" "));
@@ -527,19 +539,11 @@ void PID_Heat(boolean autoMode) {
     Serial.print(F(" Output: "));
     if (Output <  10 && Output >= 0) Serial.print(F("  "));
     if (Output < 100 && Output >= 10) Serial.print(F(" "));
-    Serial.print(Output);
-    Serial.print(F(" RealPower="));
-    if (RealPower <  10 && RealPower >= 0) Serial.print(F("  "));
-    if (RealPower < 100 && RealPower >= 10) Serial.print(F(" "));
-    Serial.print(RealPower);
-    Serial.print(F(" LogFactor="));
-    Serial.print(LogFactor);
-    Serial.print(F("  Now: "));
-    Serial.print(gCurrentTimeInMS);
-    Serial.print(F(" w_StartTime: "));
-    Serial.println(w_StartTime);
-  }
+    Serial.println(Output);
 #endif
+  }
+
+  (int((Output / 255) * SampleTime) > gCurrentTimeInMS - w_StartTime) ? bk_heat_on() : bk_heat_off();
 }
 
 
@@ -552,31 +556,31 @@ void bk_heat_on() {
   HLT_block = true;
   if (digitalRead(HLTControlPin) == HIGH) {
     digitalWrite(HLTControlPin, LOW);
-    LCDChar(0, 1, 5);
+    LCDChar(0, 2, 5);
   }
 #endif
   digitalWrite(HeatControlPin, HIGH);
-  LCDChar(19, 1, 6);
+  LCDChar(0, 1, 6);
 }
 void bk_heat_off() {
   digitalWrite(HeatControlPin, LOW);
-  LCDChar(19, 1, 5);
+  LCDChar(0, 1, 5);
 #if USE_HLT == true
   HLT_block = false;
   if (HLT_is_On) {
     digitalWrite(HLTControlPin, HIGH);
-    LCDChar(0, 1, 6);
+    LCDChar(0, 2, 6);
   }
 #endif
 }
 void bk_heat_hide() {
   digitalWrite(HeatControlPin, LOW);
-  LCDChar(19, 1, 32);
+  LCDChar(0, 1, 32);
 #if USE_HLT == true
   HLT_block = false;
   if (HLT_is_On) {
     digitalWrite(HLTControlPin, HIGH);
-    LCDChar(0, 1, 6);
+    LCDChar(0, 2, 6);
   }
 #endif
 }
@@ -593,34 +597,34 @@ void pump_PWM(byte val) {
 }
 void pump_slow(byte val) {
   pump_PWM((val * 255) / 100);
-  LCDChar(19, 2, 4);
+  LCDChar(19, 1, 4);
 }
 void pump_on() {
   pump_PWM(255);
-  LCDChar(19, 2, 4);
+  LCDChar(19, 1, 4);
 }
 void pump_off() {
   pump_PWM(0);
-  LCDChar(19, 2, 3);
+  LCDChar(19, 1, 3);
 }
 void pump_hide() {
   pump_PWM(0);
-  LCDChar(19, 2, 32);
+  LCDChar(19, 1, 32);
 }
 
 #else
 
 void pump_on() {
   digitalWrite(PumpControlPin, HIGH);
-  LCDChar(19, 2, 4);
+  LCDChar(19, 1, 4);
 }
 void pump_off() {
   digitalWrite(PumpControlPin, LOW);
-  LCDChar(19, 2, 3);
+  LCDChar(19, 1, 3);
 }
 void pump_hide() {
   digitalWrite(PumpControlPin, LOW);
-  LCDChar(19, 2, 32);
+  LCDChar(19, 1, 32);
 }
 
 #endif
@@ -633,21 +637,21 @@ void pump_hide() {
 void HLT_on() {
   if (HLT_block == false) {
     digitalWrite(HLTControlPin, HIGH);
-    LCDChar(0, 1, 6);
+    LCDChar(0, 2, 6);
   } else {
     digitalWrite(HLTControlPin, LOW);
-    LCDChar(0, 1, 5);
+    LCDChar(0, 2, 5);
   }
   HLT_is_On = true;
 }
 void HLT_off() {
   digitalWrite(HLTControlPin, LOW);
-  LCDChar(0, 1, 5);
+  LCDChar(0, 2, 5);
   HLT_is_On = false;
 }
 void HLT_hide() {
   digitalWrite(HLTControlPin, LOW);
-  LCDChar(0, 1, 32);
+  LCDChar(0, 2, 32);
   HLT_is_On = false;
 }
 #endif
@@ -663,40 +667,42 @@ void DisplayValues(boolean PWM, boolean Timer, boolean HLTtemp, boolean HLTset) 
   Prompt(X11Y1_setpoint);
 
 #if USE_HLT == true
-  if (PWM && HLTtemp)
-    // Dual show Mash PWM and HLT temperature.
-#if USE_PumpPWM == true
-    (TimeSpent % 5) ? Prompt(X1Y2_pwm) : Prompt(X1Y2_temp);
-#else
-    ((TimeSpent % 5) && ! pumpRest) ? Prompt(X1Y2_pwm) : Prompt(X1Y2_temp);
-#endif
-  else if (PWM) {
-#if USE_PumpPWM == false
-    if (pumpRest)
-      Prompt(X1Y2_blank);
-    else
-#endif
-      Prompt(X1Y2_pwm);
-  } else if (HLTset)
-    Prompt(X1Y2_temp);
-  if (Timer && HLTset)
-    (TimeSpent % 5) ? Prompt(X11Y2_timer) : Prompt(X11Y2_setpoint);
-  else if (Timer)
-    Prompt(X11Y2_timer);
-  else if (HLTset)
-    Prompt(X11Y2_setpoint);
-#else
-  if (PWM) {
-#if USE_PumpPWM == false
-    if (pumpRest)
-      Prompt(X1Y2_blank);
-    else
-#endif
-      Prompt(X1Y2_pwm);
+  if (! HLTtemp && ! HLTset) {
+    (PWM) ? Prompt(X11Y2_pwm) : Prompt(X11Y2_blank);
+    (Timer) ? Prompt(X1Y2_timer) : Prompt(X1Y2_blank);
   }
-  if (Timer)
-    Prompt(X11Y2_timer);
-#endif
+  if (HLTtemp && ! HLTset) {
+    Prompt(X1Y2_temp);
+    if (PWM && Timer) {
+      ((TimeSpent % 5) && Output) ? Prompt(X11Y2_pwm) : Prompt(X11Y2_timer);
+    } else if (PWM && ! Timer) {
+      Prompt(X11Y2_pwm);
+    } else if (! PWM && Timer) {
+      Prompt(X11Y2_timer);
+    } else {
+      Prompt(X11Y2_blank);
+    }
+  }
+  if (HLTtemp && HLTset) {
+    if (PWM && Timer) {
+      ((TimeSpent % 5) && Output) ? Prompt(X11Y2_pwm) : Prompt(X11Y2_timer);
+      (TimeSpent % 5) ? Prompt(X1Y2_temp) : Prompt(X1Y2_setpoint);
+    } else if (PWM && ! Timer) {
+      Prompt(X11Y2_pwm);
+      (TimeSpent % 5) ? Prompt(X1Y2_temp) : Prompt(X1Y2_setpoint);
+    } else if (! PWM && Timer) {
+      Prompt(X11Y2_timer);
+      (TimeSpent % 5) ? Prompt(X1Y2_temp) : Prompt(X1Y2_setpoint);
+    } else {
+      Prompt(X1Y2_temp);
+      Prompt(X11Y2_setpoint);
+    }
+  }
+#else // USE_HLT
+  (PWM) ? Prompt(X11Y2_pwm) : Prompt(X11Y2_blank);
+  (Timer) ? Prompt(X1Y2_timer) : Prompt(X1Y2_blank);
+#endif // USE_HLT
+
 }
 
 
@@ -776,12 +782,12 @@ void IodineTest(void) {
 */
 void manual_mode() {
   byte    manualMenu   = 0;
-  float   mset_temp    = 35.0;
+  float   mset_temp    = er_uint(EM_ManualMLT) / 16.0;
   boolean mheat        = false;
   boolean mtempReached = false;
   boolean mreachedBeep = false;
 #if USE_HLT == true
-  float   hset_temp    = 40.0;
+  float   hset_temp    = er_uint(EM_ManualHLT) / 16.0;
   boolean hheat        = false;
   boolean htempReached = false;
   boolean hreachedBeep = false;
@@ -823,6 +829,8 @@ void manual_mode() {
     if (mtempReached && (mreachedBeep == false)) {
       BuzzerPlay(BUZZ_TempReached);
       mreachedBeep = true;
+      TimeSpent = 0;
+      TimeUp = true;  // Count upwards
     }
 
     (mheat) ? PID_Heat(true) : bk_heat_hide();
@@ -842,9 +850,9 @@ void manual_mode() {
     }
 
     (hheat) ? HLT_Heat() : HLT_hide();
-    DisplayValues(mheat, false, true, true);
+    DisplayValues(mheat, mtempReached, true, true);
 #else
-    DisplayValues(mheat, false, false, false);
+    DisplayValues(mheat, mtempReached, false, false);
 #endif
 
     switch (manualMenu) {
@@ -862,11 +870,14 @@ void manual_mode() {
         if (button == buttonStart)
           manualMenu = 3;
         if (button == buttonEnter) {
+          TimeUp = false;
           lcd.clear();
           bk_heat_hide();
           pump_hide();
+          ew_uint(EM_ManualMLT, uint16_t(mset_temp * 16));
 #if USE_HLT == true
           HLT_hide();
+          ew_uint(EM_ManualHLT, uint16_t(hset_temp * 16));
 #endif
           return;
         }
@@ -1114,6 +1125,7 @@ startover:
           Pwhirl = true;
           while (Pwhirl) {
             AllThreads();
+            button = ReadKey();
             TimerShow(TimeWhirlPool * 60, 6, 2);
             Prompt(P3_SGQO);
             ReadButton(Direction, Timer, button);
@@ -1459,8 +1471,9 @@ startover:
 
       case StageCooling:
 #if FakeHeating == true
-        if (Temp_MLT > 16.0)
-          Temp_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000001 * (Temp_MLT - 16.0);
+        if (Fake_MLT > 16.0)
+          Fake_MLT -= (gCurrentTimeInMS - FakeHeatLastInMS) * 0.000001 * (Fake_MLT - 16.0);
+        Temp_MLT = (int(Fake_MLT * 16)) / 16.0;
 #endif
         Prompt(P0_stage);
         Setpoint = stageTemp;
@@ -1707,7 +1720,6 @@ void setup() {
   myPID.SetMode(AUTOMATIC);
 
   lcd.begin(20, 4);
-  //  Buzzer(1, 50);
   BuzzerPlay(BUZZ_Prompt);
 
   // write custom symbol to LCD
@@ -1722,7 +1734,9 @@ void setup() {
   myTimer.startTimer();            // Start the main timer
   TimerSet(0);                     // Initialize the timers.
 
-  // EEPROM data upgrades
+  /*
+     Initial EEPROM data upgrade after ArdBir or other compatible system.
+  */
   if ((EEPROM.read(EM_Signature) != 'M') || (EEPROM.read(EM_Signature + 1) != 'B')) {
     // Zero all old Fahrenheit entries
     for (byte i = 0; i < 6; i++) {
@@ -1737,6 +1751,24 @@ void setup() {
     // are 2 bytes off.
     for (byte i = 0; i < 10; i++)
       EEPROM.write(EM_RecipeIndex(i), 0);
+  }
+
+  /*
+     Second EEPROM data upgrade for version 0.2.0.
+
+  */
+  if ((er_byte(EM_Marker1) != 0xAA) && (er_byte(EM_Marker2) != 0x55)) {
+    Serial.println("EEPROM upgrade v2 rev0");
+    ew_byte(EM_Marker1, 0xAA);
+    ew_byte(EM_Marker2, 0x55);
+    ew_byte(EM_NewVersion, 2);
+    ew_byte(EM_NewRevision, 0);
+    ew_byte(EM_SampleTime, 5000 / 250);
+    ew_uint(EM_ManualMLT, 35 * 16);
+    ew_uint(EM_ManualHLT, 40 * 16);
+    ew_uint(EM_PID_Kp, uint16_t(150 * PID_Kp_div));
+    ew_uint(EM_PID_Ki, uint16_t(1.5 * PID_Ki_div));
+    ew_uint(EM_PID_Kd, uint16_t(15000 * PID_Kd_div));
   }
 }
 

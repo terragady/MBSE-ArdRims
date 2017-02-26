@@ -1,7 +1,7 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define  VERSION        "0.1.6"
+#define  VERSION        "0.2.0"
 
 /*
    EEPROM MAP
@@ -9,15 +9,14 @@
 */
 #define  EM_PIDBase           0
 //                            0   // (UseGas, Obsolete, placeholder, do not remove!).
-#define  EM_PID_kP            1   // kP
-#define  EM_PID_kI            2   // kI
-#define  EM_PID_kD            3   // kD
+//                            1   // kP, obsolete
+//                            2   // kI, obsolete
+//                            3   // kD, obsolete
 #define  EM_SampleTime        4   // SampleTime
-#define  EM_WindowSize        5   // WindowSize
+//                            5   // WindowSize, obsolete
 #define  EM_BoilHeat          6   // Boil Heat %
 #define  EM_TempOffset        7   // Temperature Offset
 //                            8   // Hysteresis (obsolete, for Gas).
-#define  EM_LogFactor         8   // Log factor for real power PWM
 #if USE_HLT == true
 #define  EM_TempHLT           9   // Temperature HLT
 #endif
@@ -102,6 +101,7 @@
 #define  EM_StageResume      85   // Resume Stage
 #define  EM_StageTimeLeft    86   // Resume time left
 #define  EM_HopAddition      87   // Hop Addition counter
+
 /*
 	 88 -  89 [ SPACE ]
 
@@ -135,27 +135,38 @@
 	690 - 699 Recipe Name  8
 	700 - 709 Recipe Name  9
 	710 - 719 Recipe Name 10
-
-
-
-    BREW SYSTEM
-
-        800 - 809 PID Data    1
-        810 - 819 PID Data    2
-        820 - 829 PID Data    3
-        830 - 839 PID Data    4
-        840 - 849 PID Data    5
-        850 - 859 System Name 1
-        860 - 869 System Name 2
-        870 - 879 System Name 3
-        880 - 889 System Name 4
-        890 - 899 System Name 5
 */
 
+
+
 #if DebugErrors == true
-#define  EM_ErrorBase        900
-#define  EM_ErrorNo(i)       ((EM_ErrorBase)+(i))
+#define  EM_ErrorBase         900
+#define  EM_ErrorNo(i)        ((EM_ErrorBase)+(i))
 #endif
+
+/*
+   New locations
+*/
+#define  EM_NewBase           920
+#define  EM_Marker1           EM_NewBase          // AA
+#define  EM_Marker2           EM_NewBase+1        // 55
+#define  EM_NewVersion        EM_NewBase+2        // New EEPROM data version
+#define  EM_NewRevision       EM_NewBase+3        // New EEPROM data revision
+#define  EM_ManualMLT         EM_NewBase+4        // Last MLT manual temperature (uint16_t)
+#define  EM_ManualHLT         EM_NewBase+6        // Last HLT manual temperature
+#define  EM_PID_Kp            EM_NewBase+8        // PID P (uint16_t)
+#define  EM_PID_Ki            EM_NewBase+10       // PID I (uint16_t)
+#define  EM_PID_Kd            EM_NewBase+12       // PID D (uint16_t)
+
+#define  PID_Kp_max           2048                // Maximum setup value
+#define  PID_Kp_step          PID_Kp_max / 65536.0
+#define  PID_Kp_div           65536 / PID_Kp_max
+#define  PID_Ki_max           128                 // Maximum setup value
+#define  PID_Ki_step          PID_Ki_max / 65536.0
+#define  PID_Ki_div           65536 / PID_Ki_max
+#define  PID_Kd_max           32768               // Maximum setup value
+#define  PID_Kd_step          PID_Kd_max / 65536.0
+#define  PID_Kd_div           65536 / PID_Kd_max
 
 
 //Stage names

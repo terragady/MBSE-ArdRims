@@ -59,6 +59,38 @@ void editByte(const char *label, int address, int max, int min, void (*displayFu
 
 
 
+/*
+   Edit PID values stored as uint16_t and edit as float.
+*/
+void editUint(const char *label, int address, int max, float step, int div) {
+  float _editingValue = (float)er_uint(address) / div;
+  boolean editLoop = true;
+  int labelLength = strlen(label);
+
+  Prompt(P2_clear);
+  Prompt(P3_QQxO);
+  lcd.setCursor(0, 2);
+  lcd.print(label);
+
+  while (editLoop) {
+
+    AllThreads();
+    byte button = ReadKey();
+    ReadButton(Direction, Timer, button);
+    lcd.setCursor((labelLength + 1), 2);
+    LCD_Float(_editingValue, 9, 3);
+    Set(_editingValue, max - 1, 0, step, Timer, Direction, button);
+
+    if (button == buttonEnter) {
+      editLoop = false;
+    }
+  }
+  ew_uint(address, (uint16_t)(_editingValue * div));
+  Prompt(P2_clear);
+}
+
+
+
 float editTemp(int address, float max, float min) {
   float   temperature = er_uint(address) / 16.0;
   boolean editLoop = true;
@@ -165,20 +197,10 @@ void editMash(byte index, float max, float min, boolean allowskip) {
 }
 
 
-void displayOffset100(int data) {
-  LCD_Float(data - 100.0, 5, 1);
-}
-
-
 
 void displayMultiply250(int data) {
-  LCD_Integer(data * 250, 4);
-}
-
-
-
-void displayKi(int data) {
-  LCD_Float(data / 1000.0, 6, 3);
+  LCD_Integer(data * 250, 5);
+  lcd.print(F(" mS"));
 }
 
 
@@ -191,7 +213,7 @@ void displayPercentage(int data) {
 
 
 void displayTempShift50Divide10(int data) {
-  LCD_Float((float)(data - 50.0) / 10.0, 4,1);
+  LCD_Float((float)(data - 50.0) / 10.0, 4, 1);
   lcd.write((byte)0);
 }
 
@@ -250,24 +272,20 @@ void displayYesNo(int value) {
 
 void set_PID(void) {
 #if langNL == true
-  editByte("Constant kP" , EM_PID_kP, 200, 100, & displayOffset100);
-  editByte("Constant kI" , EM_PID_kI, 250,   0, & displayKi);
-  editByte("Constant kD" , EM_PID_kD, 200, 100, & displayOffset100);
-  editByte("SampleTime"  , EM_SampleTime, 3500 / 250, 1000 / 250, & displayMultiply250);
-  editByte("WindowSet ms", EM_WindowSize, 7500 / 250, 3000 / 250, & displayMultiply250);
-  editByte("Log Factor"  , EM_LogFactor, 20, 0, & displayNumber);
+  editUint("PID kP"      , EM_PID_Kp, PID_Kp_max, PID_Kp_step, PID_Kp_div);
+  editUint("PID kI"      , EM_PID_Ki, PID_Ki_max, PID_Ki_step, PID_Ki_div);
+  editUint("PID kD"      , EM_PID_Kd, PID_Kd_max, PID_Kd_step, PID_Kd_div);
+  editByte("SampleTime"  , EM_SampleTime, 20000 / 250, 1000 / 250, & displayMultiply250);
   editByte("Temp Offset" , EM_TempOffset, 100, 0, & displayTempShift50Divide10);
   editByte("Heat in Boil", EM_BoilHeat, 100, 20, & displayPercentage);
 #if USE_HLT == true
   editByte("HLT temp."   , EM_TempHLT, 95, 0, & displaySimpleTemperature);
 #endif
 #else
-  editByte("Constant kP" , EM_PID_kP, 200, 100, & displayOffset100);
-  editByte("Constant kI" , EM_PID_kI, 250,   0, & displayKi);
-  editByte("Constant kD" , EM_PID_kD, 200, 100, & displayOffset100);
-  editByte("SampleTime"  , EM_SampleTime, 3500 / 250, 1000 / 250, & displayMultiply250);
-  editByte("WindowSet ms", EM_WindowSize, 7500 / 250, 3000 / 250, & displayMultiply250);
-  editByte("Log Factor"  , EM_LogFactor, 20, 0, & displayNumber);
+  editUint("PID kP"      , EM_PID_Kp, 200, 100);
+  editUint("PID kI"      , EM_PID_Ki, 250,   0);
+  editUint("PID kD"      , EM_PID_Kd, 200, 100);
+  editByte("SampleTime"  , EM_SampleTime, 20000 / 250, 1000 / 250, & displayMultiply250);
   editByte("Temp Offset" , EM_TempOffset, 100, 0, & displayTempShift50Divide10);
   editByte("Heat in Boil", EM_BoilHeat, 100, 20, & displayPercentage);
 #if USE_HLT == true
@@ -756,7 +774,7 @@ void RecipeDelete(void) {
 
 
 /*
-   Initialze Recipes storage memory
+   Initialize Recipes storage memory
 */
 void InitRecipes(void) {
   byte  i, j;
@@ -943,7 +961,6 @@ void setup_mode() {
         if (button == buttonEnter)
           set_Auto_Boil();
         break;
-
 
       case (4):
 #if langNL == true

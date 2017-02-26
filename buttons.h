@@ -217,7 +217,7 @@ float Set(float& Set, float Up, float Low, float Step, long Timer, byte Directio
 
   if (ButtonPressed && Direction != DirectionNone) {
     if (kp_repeat_count > 20) {
-      step_size = (Step * 20.0);
+      step_size = (Step * 50.0);
     } else if (kp_repeat_count > 5) {
       step_size = (Step * 5.0);
     } else {

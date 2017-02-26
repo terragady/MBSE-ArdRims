@@ -16,11 +16,10 @@ Verschillen tussen andere software en MBSE-ArdRims:
 2.  Alleen 20x4 LCD displays.
 3.  Tijdens de maisch stappen is de PID altijd in gebruik, er is geen vol
     gas methode als de temperatuur te ver af is.
-4.  Logaritmische PWM vermogen regeling. Als de PID 1% vermogen wil, dan
-    kan het effectieve vermogen groter zijn omdat je met 1% vermogen niets
-    kan verwarmen. In de setup heet dit "Log Factor". Deze kan ingesteld worden
-    tussen 0 (niets) en 20 (maximaal) extra vermogen. Hierdoor werkt de PID
-    regeling een stuk beter. Het nut hangt sterk af van je installatie.
+4.  De PID regeling heeft een ruimer instelbereik, P van 0 tot 2048, I van 0
+    tot 128 en D van 0 tot 32768. Ook een aantal decimalen achter de komma.
+    Hierdoor werkt de PID zoals het hoort. De standaard waardes zijn:
+    P = 150, I = 1,5 en D = 15000.
 5.  Maisch stappen setup is vriendelijker. Eerst bepaal je of een bepaalde
     maisch stap wel of niet doorlopen moet worden, en als het "aan" is dan
     pas kun je de temperatuur en tijd instellen.
@@ -41,7 +40,8 @@ Verschillen tussen andere software en MBSE-ArdRims:
     maisch ketel, dus het maximale stroomverbruik is die van de zwaarste ketel.
     USE_HLT true/false.
 10. Verbeterde en meer robuuste uitlezing van de 1-wire sensoren.
-11. Geen timer tijdens de handbediening, kijk zelf maar op de klok.
+11. Bij handbediening als de temperatuur voor de MLT bereikt is gaat er een
+    klok lopen. Deze heeft geen functie maar is alleen een indicatie.
 12. De code voor Automatic mode is nu State code. Dit scheelt geheugen en de
     code is beter te onderhouden.
 13. De EEPROM opslag heeft een handtekening en versie markeringen. Hierdoor 
@@ -59,6 +59,8 @@ Verschillen tussen andere software en MBSE-ArdRims:
 19. Een conditional define (USE_PumpPWM true/false) waarmee de pomp snelheid
     electronisch geregeld kan worden. Default false, dus voor relais. Indien
     true moet je zorgen voor een elektronische vermogens regeling.
+20. De laatst gebruikte temperatuur in Manual mode wordt opgeslagen voor de
+    volgende keer dat Manual mode gebruikt wordt.
 
 
 Naast de standaard Arduino bibliotheken zijn de volgende extra bibliotheken
