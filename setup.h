@@ -282,9 +282,9 @@ void set_PID(void) {
   editByte("HLT temp."   , EM_TempHLT, 95, 0, & displaySimpleTemperature);
 #endif
 #else
-  editUint("PID kP"      , EM_PID_Kp, 200, 100);
-  editUint("PID kI"      , EM_PID_Ki, 250,   0);
-  editUint("PID kD"      , EM_PID_Kd, 200, 100);
+  editUint("PID kP"      , EM_PID_Kp, PID_Kp_max, PID_Kp_step, PID_Kp_div);
+  editUint("PID kI"      , EM_PID_Ki, PID_Ki_max, PID_Ki_step, PID_Ki_div);
+  editUint("PID kD"      , EM_PID_Kd, PID_Kd_max, PID_Kd_step, PID_Kd_div);
   editByte("SampleTime"  , EM_SampleTime, 20000 / 250, 1000 / 250, & displayMultiply250);
   editByte("Temp Offset" , EM_TempOffset, 100, 0, & displayTempShift50Divide10);
   editByte("Heat in Boil", EM_BoilHeat, 100, 20, & displayPercentage);
